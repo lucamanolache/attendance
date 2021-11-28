@@ -1,7 +1,7 @@
 use actix_files::NamedFile;
-use simple_logger::SimpleLogger;
+use actix_web::{get, App, HttpRequest, HttpServer};
 use log::*;
-use actix_web::{App, HttpRequest, HttpServer, get};
+use simple_logger::SimpleLogger;
 
 #[get("/")]
 async fn index(_req: HttpRequest) -> Result<NamedFile, actix_web::Error> {
@@ -13,10 +13,7 @@ async fn main() -> Result<(), actix_web::Error> {
     SimpleLogger::new().init().unwrap();
     trace!("Started logger");
 
-    HttpServer::new(move || {
-        App::new()
-            .service(index)
-    })
+    HttpServer::new(move || App::new().service(index))
         .bind("127.0.0.1:3030")?
         .run()
         .await?;
