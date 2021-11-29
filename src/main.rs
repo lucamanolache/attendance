@@ -36,9 +36,7 @@ async fn main() -> Result<(), actix_web::Error> {
     let client = get_client().await.unwrap();
     let db = client.database("people");
 
-    HttpServer::new(move || App::new()
-                    .data(AppState { db: db.clone() })
-                    .service(index))
+    HttpServer::new(move || App::new().data(AppState { db: db.clone() }).service(index))
         .bind("127.0.0.1:3030")?
         .run()
         .await?;
