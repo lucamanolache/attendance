@@ -16,6 +16,7 @@ actix-rt = "2.3"
 log = "0.4"
 simple_logger = "1.13"
 futures = "0.3"
+chrono = { version = "0.4", features = ["serde"] }
 
 [dependencies.mongodb]
 version = "2.0.0"

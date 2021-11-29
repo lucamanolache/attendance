@@ -1,3 +1,5 @@
+mod schema;
+
 use std::env;
 
 use actix_files::NamedFile;
