@@ -1,9 +1,10 @@
 mod schema;
+mod login;
 
 use std::env;
 
 use actix_files::NamedFile;
-use actix_web::{get, App, HttpRequest, HttpServer};
+use actix_web::{App, HttpRequest, HttpResponse, HttpServer, get, post, web};
 use log::*;
 use mongodb::{options::ClientOptions, Client, Database};
 use simple_logger::SimpleLogger;
@@ -12,8 +13,15 @@ struct AppState {
     db: Database,
 }
 
+#[post("/api/login")]
+async fn login_request(form: web::Json<login::LoginRequest>, state: web::Data<AppState>) -> HttpResponse {
+    info!("Login request {:?}", &form);
+    HttpResponse::Ok().body("a")
+}
+
 #[get("/")]
-async fn index(_req: HttpRequest) -> Result<NamedFile, actix_web::Error> {
+async fn index(req: HttpRequest) -> Result<NamedFile, actix_web::Error> {
+    info!("{:?}", req);
     Ok(NamedFile::open("./index.html")?)
 }
 
@@ -30,7 +38,7 @@ async fn get_client() -> Result<Client, mongodb::error::Error> {
 
 #[actix_web::main]
 async fn main() -> Result<(), actix_web::Error> {
-    SimpleLogger::new().init().unwrap();
+    SimpleLogger::new().with_level(LevelFilter::Info).init().unwrap();
     trace!("Started logger");
 
     let client = get_client().await.unwrap();
