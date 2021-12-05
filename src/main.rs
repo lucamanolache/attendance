@@ -5,17 +5,39 @@ use std::env;
 
 use actix_files::NamedFile;
 use actix_web::{App, HttpRequest, HttpResponse, HttpServer, get, post, web};
+use chrono::Utc;
 use log::*;
-use mongodb::{options::ClientOptions, Client, Database};
+use mongodb::{bson::doc, options::ClientOptions, Client, Database};
 use simple_logger::SimpleLogger;
 
+use crate::schema::student::Student;
+
 struct AppState {
-    db: Database,
+    client: Client,
 }
 
 #[post("/api/login")]
 async fn login_request(form: web::Json<login::LoginRequest>, state: web::Data<AppState>) -> HttpResponse {
     info!("Login request {:?}", &form);
+
+    let mut session = state.client.start_session(None).await.unwrap();
+
+    let collection = state.client.database("").collection::<Student>("people");
+    let mut student = collection.find_one_with_session(doc! {"id": form.id}, None, &mut session).await.unwrap().unwrap();
+
+    if student.login_status.is_some() {
+        // We are currently at lab, therefore log out and add an event
+        let event = (student.login_status.unwrap(), Utc::now());
+        student.valid_time = (event.1 - event.0).num_seconds();
+        student.events.push(event);
+        student.login_status = None;
+    } else {
+        // We are just signing into lab, therefore just log in and do not add an event
+        student.login_status = Some(Utc::now());
+    }
+
+    collection.replace_one_with_session(doc! {"id": form.id}, student, None, &mut session).await.unwrap();
+
     HttpResponse::Ok().body("a")
 }
 
@@ -42,9 +64,8 @@ async fn main() -> Result<(), actix_web::Error> {
     trace!("Started logger");
 
     let client = get_client().await.unwrap();
-    let db = client.database("people");
 
-    HttpServer::new(move || App::new().data(AppState { db: db.clone() }).service(index))
+    HttpServer::new(move || App::new().data(AppState { client: client.clone() }).service(index))
         .bind("127.0.0.1:3030")?
         .run()
         .await?;

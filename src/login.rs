@@ -2,7 +2,7 @@ use serde::{Serialize, Deserialize};
 
 #[derive(Deserialize, Copy, Clone, Debug)]
 pub struct LoginRequest {
-    pub(crate) id: Option<u32>,
+    pub(crate) id: u32,
 }
 
 #[derive(Serialize, Clone)]
