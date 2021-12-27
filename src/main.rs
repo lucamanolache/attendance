@@ -1,4 +1,5 @@
 mod schema;
+mod add_student;
 mod login;
 
 use std::env;
@@ -41,6 +42,24 @@ async fn login_request(form: web::Json<login::LoginRequest>, state: web::Data<Ap
     collection.replace_one_with_session(doc! {"id": form.id}, student, None, &mut session).await.unwrap();
 
     HttpResponse::Ok().body("a")
+}
+
+async fn add_student(form: web::Json<add_student::AddStudentRequest>, state: web::Data<AppState>) -> HttpResponse {
+    info!("Add student request {:?}", form);
+
+    let collection = state.client.database("").collection::<Student>("people");
+    let mut student = Student {
+        id: form.id,
+        name: form.name,
+        valid_time: 0,
+        events: Vec::new(),
+        login_status: false,
+    };
+
+    match collection.insert_one(student, None).await {
+        Ok() => HttpResponse::Accepted(),
+        _ => HttpResponse::Conflict()
+    }
 }
 
 #[get("/")]
