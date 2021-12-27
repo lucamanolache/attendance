@@ -4,7 +4,7 @@ mod login;
 
 use std::env;
 
-use actix_files::NamedFile;
+use actix_files as fs;
 use actix_web::{App, HttpRequest, HttpResponse, HttpServer, get, post, web};
 use chrono::Utc;
 use log::*;
@@ -44,28 +44,23 @@ async fn login_request(form: web::Json<login::LoginRequest>, state: web::Data<Ap
     HttpResponse::Ok().body("a")
 }
 
-async fn add_student(form: web::Json<add_student::AddStudentRequest>, state: web::Data<AppState>) -> HttpResponse {
+#[post("/api/add_students")]
+async fn add_students(form: web::Json<add_student::AddStudentRequest>, state: web::Data<AppState>) -> HttpResponse {
     info!("Add student request {:?}", form);
 
     let collection = state.client.database("").collection::<Student>("people");
-    let mut student = Student {
+    let student = Student {
         id: form.id,
-        name: form.name,
+        name: form.clone().name,
         valid_time: 0,
         events: Vec::new(),
-        login_status: false,
+        login_status: None,
     };
 
     match collection.insert_one(student, None).await {
-        Ok() => HttpResponse::Accepted(),
-        _ => HttpResponse::Conflict()
+        Ok(_) => HttpResponse::Accepted().body(""),
+        _ => HttpResponse::Conflict().body("")
     }
-}
-
-#[get("/")]
-async fn index(req: HttpRequest) -> Result<NamedFile, actix_web::Error> {
-    info!("{:?}", req);
-    Ok(NamedFile::open("./index.html")?)
 }
 
 async fn get_client() -> Result<Client, mongodb::error::Error> {
@@ -86,7 +81,10 @@ async fn main() -> Result<(), actix_web::Error> {
 
     let client = get_client().await.unwrap();
 
-    HttpServer::new(move || App::new().data(AppState { client: client.clone() }).service(index))
+    HttpServer::new(move || App::new().data(AppState { client: client.clone() })
+        .service(fs::Files::new("/", "./static/build").index_file("index.html"))
+        .service(add_students)
+        .service(login_request))
         .bind("127.0.0.1:3030")?
         .run()
         .await?;
