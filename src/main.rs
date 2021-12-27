@@ -29,11 +29,13 @@ async fn login_request(form: web::Json<login::LoginRequest>, state: web::Data<Ap
         // We are currently at lab, therefore log out and add an event
         let event = (student.login_status.unwrap(), Utc::now());
         student.valid_time = (event.1 - event.0).num_seconds();
+        info!("Logging {} out at {} with {} minutes at lab", student.name, Utc::now(), (event.1 - event.0).num_minutes());
         student.events.push(event);
         student.login_status = None;
     } else {
         // We are just signing into lab, therefore just log in and do not add an event
         student.login_status = Some(Utc::now());
+        info!("Logging {} in at {}", student.name, Utc::now());
     }
 
     collection.replace_one_with_session(doc! {"id": form.id}, student, None, &mut session).await.unwrap();
