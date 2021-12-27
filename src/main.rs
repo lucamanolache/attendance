@@ -2,7 +2,7 @@ mod schema;
 mod add_student;
 mod login;
 
-use std::env;
+use std::{env, process::id};
 
 use actix_files as fs;
 use actix_web::{App, HttpRequest, HttpResponse, HttpServer, get, post, web};
@@ -17,31 +17,51 @@ struct AppState {
     client: Client,
 }
 
+#[post("/api/echo")]
+async fn echo(data: String) -> HttpResponse {
+    info!("Echo {}", data);
+    HttpResponse::Ok().body(data)
+}
+
 #[post("/api/login")]
 async fn login_request(form: web::Json<login::LoginRequest>, state: web::Data<AppState>) -> HttpResponse {
-    info!("Login request {:?}", &form);
-
     let mut session = state.client.start_session(None).await.unwrap();
 
     let collection = state.client.database("").collection::<Student>("people");
-    let mut student = collection.find_one_with_session(doc! {"id": form.id}, None, &mut session).await.unwrap().unwrap();
+    match collection.find_one_with_session(doc! {"id": form.id}, None, &mut session).await {
+        Ok(student) => {
+            // Student has been found
+            info!("Found student {}", form.id);
+            let mut student = student.unwrap();
+            let mut leaving = false;
+            if student.login_status.is_some() {
+                // We are currently at lab, therefore log out and add an event
+                let event = (student.login_status.unwrap(), Utc::now());
+                student.valid_time = (event.1 - event.0).num_seconds();
+                info!("Logging {} out at {} with {} minutes at lab", student.name, Utc::now(), (event.1 - event.0).num_minutes());
+                student.events.push(event);
+                student.login_status = None;
+                leaving = true;
+            } else {
+                // We are just signing into lab, therefore just log in and do not add an event
+                student.login_status = Some(Utc::now());
+                info!("Logging {} in at {}", &student.name, Utc::now());
+            }
+            let name = student.name.clone();
+            collection.replace_one_with_session(doc! {"id": form.id}, student, None, &mut session).await.unwrap();
 
-    if student.login_status.is_some() {
-        // We are currently at lab, therefore log out and add an event
-        let event = (student.login_status.unwrap(), Utc::now());
-        student.valid_time = (event.1 - event.0).num_seconds();
-        info!("Logging {} out at {} with {} minutes at lab", student.name, Utc::now(), (event.1 - event.0).num_minutes());
-        student.events.push(event);
-        student.login_status = None;
-    } else {
-        // We are just signing into lab, therefore just log in and do not add an event
-        student.login_status = Some(Utc::now());
-        info!("Logging {} in at {}", student.name, Utc::now());
+            HttpResponse::Ok().body(serde_json::to_string(&login::LoginResponse {
+                leaving,
+                name
+            }).unwrap())
+        },
+        Err(_) => {
+            // Student was not found in database
+            warn!("Student {} not found", form.id);
+            HttpResponse::NotAcceptable().body("")
+        }
     }
 
-    collection.replace_one_with_session(doc! {"id": form.id}, student, None, &mut session).await.unwrap();
-
-    HttpResponse::Ok().body("a")
 }
 
 #[post("/api/add_students")]
@@ -82,9 +102,10 @@ async fn main() -> Result<(), actix_web::Error> {
     let client = get_client().await.unwrap();
 
     HttpServer::new(move || App::new().data(AppState { client: client.clone() })
-        .service(fs::Files::new("/", "./static/build").index_file("index.html"))
         .service(add_students)
-        .service(login_request))
+        .service(login_request)
+        .service(echo)
+        .service(fs::Files::new("/", "./static/build").index_file("index.html")))
         .bind("127.0.0.1:3030")?
         .run()
         .await?;

@@ -8,6 +8,5 @@ pub struct LoginRequest {
 #[derive(Serialize, Clone)]
 pub struct LoginResponse {
     pub(crate) leaving: bool,
-    pub(crate) valid: bool,
     pub(crate) name: String,
 }
