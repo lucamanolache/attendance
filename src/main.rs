@@ -27,12 +27,11 @@ async fn echo(data: String) -> HttpResponse {
 async fn login_request(form: web::Json<login::LoginRequest>, state: web::Data<AppState>) -> HttpResponse {
     let mut session = state.client.start_session(None).await.unwrap();
 
-    let collection = state.client.database("").collection::<Student>("people");
-    match collection.find_one_with_session(doc! {"id": form.id}, None, &mut session).await {
-        Ok(student) => {
+    let collection = state.client.database("attendance").collection::<Student>("people");
+    match collection.find_one_with_session(doc! {"id": form.id}, None, &mut session).await.unwrap() {
+        Some(mut student) => {
             // Student has been found
             info!("Found student {}", form.id);
-            let mut student = student.unwrap();
             let mut leaving = false;
             if student.login_status.is_some() {
                 // We are currently at lab, therefore log out and add an event
@@ -55,10 +54,10 @@ async fn login_request(form: web::Json<login::LoginRequest>, state: web::Data<Ap
                 name
             }).unwrap())
         },
-        Err(_) => {
+        None => {
             // Student was not found in database
             warn!("Student {} not found", form.id);
-            HttpResponse::NotAcceptable().body("")
+            HttpResponse::NotFound().body("")
         }
     }
 
@@ -66,9 +65,7 @@ async fn login_request(form: web::Json<login::LoginRequest>, state: web::Data<Ap
 
 #[post("/api/add_students")]
 async fn add_students(form: web::Json<add_student::AddStudentRequest>, state: web::Data<AppState>) -> HttpResponse {
-    info!("Add student request {:?}", form);
-
-    let collection = state.client.database("").collection::<Student>("people");
+    let collection = state.client.database("attendance").collection::<Student>("people");
     let student = Student {
         id: form.id,
         name: form.clone().name,
@@ -78,8 +75,14 @@ async fn add_students(form: web::Json<add_student::AddStudentRequest>, state: we
     };
 
     match collection.insert_one(student, None).await {
-        Ok(_) => HttpResponse::Accepted().body(""),
-        _ => HttpResponse::Conflict().body("")
+        Ok(_) => {
+            info!("Adding student {:?}", form);
+            HttpResponse::Accepted().body("")
+        },
+        Err(e) => {
+            warn!("Adding student {} failed with {:?}", form.id, e);
+            HttpResponse::Conflict().body("")
+        }
     }
 }
 
