@@ -33,11 +33,13 @@ async fn login_request(form: web::Json<login::LoginRequest>, state: web::Data<Ap
             // Student has been found
             info!("Found student {}", form.id);
             let mut leaving = false;
+            let mut time_spent = 0;
             if student.login_status.is_some() {
                 // We are currently at lab, therefore log out and add an event
                 let event = (student.login_status.unwrap(), Utc::now());
-                student.valid_time = (event.1 - event.0).num_seconds();
-                info!("Logging {} out at {} with {} minutes at lab", student.name, Utc::now(), (event.1 - event.0).num_minutes());
+                time_spent = (event.1 - event.0).num_seconds();
+                student.valid_time += time_spent;
+                info!("Logging {} out at {} with {} minutes at lab", student.name, Utc::now(), time_spent);
                 student.events.push(event);
                 student.login_status = None;
                 leaving = true;
@@ -51,6 +53,7 @@ async fn login_request(form: web::Json<login::LoginRequest>, state: web::Data<Ap
 
             HttpResponse::Ok().body(serde_json::to_string(&login::LoginResponse {
                 leaving,
+                time_spent,
                 name
             }).unwrap())
         },

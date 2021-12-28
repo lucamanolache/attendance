@@ -9,4 +9,5 @@ pub struct LoginRequest {
 pub struct LoginResponse {
     pub(crate) leaving: bool,
     pub(crate) name: String,
+    pub(crate) time_spent: i64,
 }

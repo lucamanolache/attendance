@@ -5,11 +5,14 @@ import Box from '@mui/material/Box';
 
 function Main() {
     const [text, setText] = useState('')
+    const [helper, setHelper] = useState('')
     const [error, setError] = useState(false)
+
     const isValid = (t) => {
         let valid = /^\d+$/.test(t);
         valid &= t.length === 8
         valid |= t.length === 0
+        setHelper('')
         if (!valid) {
             setError(true);
             setText(t);
@@ -24,13 +27,13 @@ function Main() {
         event.preventDefault();
         if (event.key === 'Enter') {
             if (isValid(text)) {
-                login(text)
+                add_student(text)
             }
             setText('')
         }
     }
 
-    const login = (text) => {
+    const add_student = (text) => {
         console.log("Requesting to add " + text);
 
         const request_options = {
@@ -43,7 +46,12 @@ function Main() {
         fetch("http://127.0.0.1:3030/api/login", request_options)
             .then(response => response.json())
             .then(data => {
-                console.log(data)
+                console.log(data);
+                if (data.leaving) {
+                    setHelper("Goodbye " + data.name + ", you stayed " + Math.round(data.time_spent / 60) + " minutes");
+                } else {
+                    setHelper("Welcome " + data.name);
+                }
             })
     }
 
@@ -64,6 +72,7 @@ function Main() {
                     variant="standard"
                     error={error}
                     value={text}
+                    helperText={helper}
                     onChange={s => isValid(s.target.value)}/>
             </Box>
         </React.Fragment>
