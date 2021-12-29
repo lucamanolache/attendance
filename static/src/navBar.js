@@ -15,6 +15,7 @@ import {
 import { StaticRouter } from 'react-router-dom/server';
 import Main from "./components/Main";
 import AddStudent from "./components/AddStudent";
+import Current from "./components/Current";
 
 function Router(props) {
     const { children } = props;
@@ -72,7 +73,7 @@ export default function TabsRouter() {
                 <MyTabs />
                 <Routes>
                     <Route path="/" element={<Main/>} />
-                    <Route path="/current" element={<AddStudent />}/>
+                    <Route path="/current" element={<Current />}/>
                 </Routes>
             </Box>
         </Router>
