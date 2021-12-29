@@ -10,8 +10,12 @@ use chrono::Utc;
 use log::*;
 use mongodb::{bson::doc, options::ClientOptions, Client, Database};
 use simple_logger::SimpleLogger;
+use futures::{stream::{StreamExt, TryStreamExt}, TryFutureExt};
 
-use crate::schema::student::Student;
+use crate::{schema::student::Student, add_student::AddStudentRequest};
+
+const DATABASE: &str = "attendance";
+const COLLECTION: &str = "people";
 
 struct AppState {
     client: Client,
@@ -23,11 +27,29 @@ async fn echo(data: String) -> HttpResponse {
     HttpResponse::Ok().body(data)
 }
 
+#[get("/api/get_here")]
+async fn get_students(state: web::Data<AppState>) -> HttpResponse {
+    info!("Getting students at lab");
+    let collection = state.client.database(DATABASE).collection::<Student>(COLLECTION);
+
+    let students = collection.find(doc! {"login_status": {"$ne": Option::<String>::None}}, None).await.unwrap();
+    let students = students.map(|x| {
+        let x = x.unwrap();
+        AddStudentRequest {
+            id: x.id,
+            subteam: x.subteam,
+            name: x.name,
+        }
+    }).collect::<Vec<AddStudentRequest>>().await;
+
+    return HttpResponse::Ok().body(serde_json::to_string(&students).unwrap())
+}
+
 #[post("/api/login")]
 async fn login_request(form: web::Json<login::LoginRequest>, state: web::Data<AppState>) -> HttpResponse {
     let mut session = state.client.start_session(None).await.unwrap();
 
-    let collection = state.client.database("attendance").collection::<Student>("people");
+    let collection = state.client.database(DATABASE).collection::<Student>(COLLECTION);
     match collection.find_one_with_session(doc! {"id": form.id}, None, &mut session).await.unwrap() {
         Some(mut student) => {
             // Student has been found
@@ -68,13 +90,14 @@ async fn login_request(form: web::Json<login::LoginRequest>, state: web::Data<Ap
 
 #[post("/api/add_students")]
 async fn add_students(form: web::Json<add_student::AddStudentRequest>, state: web::Data<AppState>) -> HttpResponse {
-    let collection = state.client.database("attendance").collection::<Student>("people");
+    let collection = state.client.database(DATABASE).collection::<Student>(COLLECTION);
     let student = Student {
         id: form.id,
         name: form.clone().name,
         valid_time: 0,
         events: Vec::new(),
         login_status: None,
+        subteam: form.clone().subteam,
     };
 
     match collection.insert_one(student, None).await {
@@ -110,6 +133,7 @@ async fn main() -> Result<(), actix_web::Error> {
     HttpServer::new(move || App::new().data(AppState { client: client.clone() })
         .service(add_students)
         .service(login_request)
+        .service(get_students)
         .service(echo)
         .service(fs::Files::new("/", "./static/build").index_file("index.html")))
         .bind("127.0.0.1:3030")?
