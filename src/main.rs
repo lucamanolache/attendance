@@ -30,6 +30,24 @@ async fn echo(data: String) -> HttpResponse {
     HttpResponse::Ok().body(data)
 }
 
+#[get("/api/get_all")]
+async fn get_leaderboard(state: web::Data<AppState>) -> HttpResponse {
+    info!("Getting leaderboard");
+    let collection = state
+        .client
+        .database(DATABASE)
+        .collection::<Student>(COLLECTION);
+
+    let students = collection.find(doc!{}, None).await.unwrap();
+    let mut students: Vec<Student> = students
+        .map(|s| s.unwrap())
+        .collect()
+        .await;
+    students.sort_by(|a, b| b.valid_time.cmp(&a.valid_time));
+
+    return HttpResponse::Ok().body(serde_json::to_string(&students).unwrap());
+}
+
 #[get("/api/get_here")]
 async fn get_students(state: web::Data<AppState>) -> HttpResponse {
     info!("Getting students at lab");
