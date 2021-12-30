@@ -9,4 +9,5 @@ pub struct Student {
     pub events: Vec<(DateTime<Local>, DateTime<Local>)>,
     pub login_status: Option<DateTime<Local>>,
     pub subteam: String,
+    pub slack_id: String,
 }

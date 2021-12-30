@@ -120,36 +120,6 @@ async fn login_request(
     }
 }
 
-#[post("/api/add_students")]
-async fn add_students(
-    form: web::Json<add_student::AddStudentRequest>,
-    state: web::Data<AppState>,
-) -> HttpResponse {
-    let collection = state
-        .client
-        .database(DATABASE)
-        .collection::<Student>(COLLECTION);
-    let student = Student {
-        id: form.id,
-        name: form.clone().name,
-        valid_time: 0,
-        events: Vec::new(),
-        login_status: None,
-        subteam: form.clone().subteam,
-    };
-
-    match collection.insert_one(student, None).await {
-        Ok(_) => {
-            info!("Adding student {:?}", form);
-            HttpResponse::Accepted().body("")
-        }
-        Err(e) => {
-            warn!("Adding student {} failed with {:?}", form.id, e);
-            HttpResponse::Conflict().body("")
-        }
-    }
-}
-
 async fn get_client() -> Result<Client, mongodb::error::Error> {
     let password = env::var("MONGO_PASSWD").expect("MONGO_PASSWD not set");
     let client_options = ClientOptions::parse(format!(
@@ -173,7 +143,6 @@ async fn main() -> Result<(), actix_web::Error> {
             .data(AppState {
                 client: client.clone(),
             })
-            .service(add_students)
             .service(login_request)
             .service(get_students)
             .service(echo)
