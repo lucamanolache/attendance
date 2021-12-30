@@ -1,8 +1,11 @@
 mod add_student;
 mod login;
 mod schema;
+mod slack;
 
 use std::{env, process::id};
+use std::env::VarError;
+use ::slack::{Error, RtmClient};
 
 use actix_files as fs;
 use actix_web::{get, post, web, App, HttpRequest, HttpResponse, HttpServer};
@@ -164,6 +167,18 @@ async fn main() -> Result<(), actix_web::Error> {
     trace!("Started logger");
 
     let client = get_client().await.unwrap();
+    actix_rt::spawn(async {
+        match env::var("SLACK_API_TOKEN") {
+            Ok(key) => {
+                let client = RtmClient::login_and_run(&key, &mut slack::bot::Handler);
+                match client {
+                    Ok(_) => {}
+                    Err(_) => warn!("Slack client not working")
+                }
+            }
+            Err(_) => { warn!("No Slack API key") }
+        }
+    });
 
     HttpServer::new(move || {
         App::new()
