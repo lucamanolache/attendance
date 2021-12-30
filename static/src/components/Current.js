@@ -12,7 +12,7 @@ function Current() {
             method: 'GET',
         }
 
-        fetch("http://127.0.0.1:3030/api/get_here", request_options)
+        fetch("/api/get_here", request_options)
             .then(response => response.json())
             .then(response => {
                 console.log("Got students")

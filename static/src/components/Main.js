@@ -44,7 +44,7 @@ function Main() {
         }
 
         // TODO: add error handling
-        fetch("http://127.0.0.1:3030/api/login", request_options)
+        fetch("/api/login", request_options)
             .then(response => response.json())
             .then(data => {
                 console.log(data);

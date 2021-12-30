@@ -44,7 +44,7 @@ function AddStudent() {
             body: JSON.stringify({ id: parseInt(id), name: name })
         }
 
-        fetch("http://127.0.0.1:3030/api/add_students", request_options).then(r => console.log("Added student"))
+        fetch("/api/add_students", request_options).then(r => console.log("Added student"))
     }
 
     return (
