@@ -1,1 +1,1 @@
-PORT=$PORT ./target/release/attendance-system
+web: PORT=$PORT ./target/release/attendance-system
