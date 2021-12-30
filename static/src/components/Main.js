@@ -2,6 +2,7 @@ import NavBar from "../navBar";
 import React, {useState} from "react";
 import TextField from '@mui/material/TextField';
 import Box from '@mui/material/Box';
+import {Grid} from "@mui/material";
 
 function Main() {
     const [text, setText] = useState('')
@@ -57,7 +58,7 @@ function Main() {
 
     return (
         <React.Fragment>
-            <Box
+            <Grid
                 component="TextField"
                 sx={{
                     '& .MuiTextField-root': { m: 1, width: '25ch' },
@@ -65,10 +66,10 @@ function Main() {
                 noValidate
                 autoComplete="off"
                 onKeyUp={handleKeyDown}
-                width={500} height={80}
                 alignItems="center"
                 alignContent="center"
                 justifyContent="center"
+                container
             >
                 <TextField
                     id="login-box"
@@ -78,7 +79,7 @@ function Main() {
                     value={text}
                     helperText={helper}
                     onChange={s => isValid(s.target.value)}/>
-            </Box>
+            </Grid>
         </React.Fragment>
     );
 }
