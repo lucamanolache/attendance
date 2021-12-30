@@ -136,7 +136,7 @@ async fn main() -> Result<(), actix_web::Error> {
         .service(get_students)
         .service(echo)
         .service(fs::Files::new("/", "./static/build").index_file("index.html")))
-        .bind(env::var("PORT").expect("PORT not set"))?
+        .bind(env::var("URL").expect("URL not set") + &env::var("PORT").expect("PORT not set"))?
         .run()
         .await?;
 
