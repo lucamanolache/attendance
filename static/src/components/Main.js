@@ -65,6 +65,10 @@ function Main() {
                 noValidate
                 autoComplete="off"
                 onKeyUp={handleKeyDown}
+                width={500} height={80}
+                alignItems="center"
+                alignContent="center"
+                justifyContent="center"
             >
                 <TextField
                     id="login-box"

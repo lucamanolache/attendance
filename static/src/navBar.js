@@ -16,15 +16,21 @@ import { StaticRouter } from 'react-router-dom/server';
 import Main from "./components/Main";
 import AddStudent from "./components/AddStudent";
 import Current from "./components/Current";
+import {Icon} from "@mui/material";
+import HomeIcon from '@mui/icons-material/Home';
+import PersonIcon from '@mui/icons-material/Person';
+import AlignVerticalBottomIcon from '@mui/icons-material/AlignVerticalBottom';
+import FunctionsIcon from '@mui/icons-material/Functions';
+import Filter8Icon from '@mui/icons-material/Filter8';
 
 function Router(props) {
     const { children } = props;
     if (typeof window === 'undefined') {
-        return <StaticRouter location="/">{children}</StaticRouter>;
+        return <StaticRouter location="/login">{children}</StaticRouter>;
     }
 
     return (
-        <MemoryRouter initialEntries={['/']} initialIndex={0}>
+        <MemoryRouter initialEntries={['/login']} initialIndex={0}>
             {children}
         </MemoryRouter>
     );
@@ -57,11 +63,12 @@ function MyTabs() {
     const currentTab = routeMatch?.pattern?.path;
 
     return (
-        <Tabs value={currentTab}>
-            <Tab label="Login" value="login" to="/" component={Link} />
-            <Tab label="At Lab" value="current" to="/current" component={Link} />
-            <Tab label="Leader Board" value="leaderboard" to="/leaderboard" component={Link} />
-            <Tab label="Statistics" value="stats" to="/stats" component={Link} />
+        <Tabs value={currentTab} centered>
+            <Tab icon={<Filter8Icon />} disabled />
+            <Tab label="Login" value="login" to="/login" component={Link} icon={<HomeIcon />} />
+            <Tab label="At Lab" value="current" to="/current" component={Link} icon={<PersonIcon />}/>
+            <Tab label="Leader Board" value="leaderboard" to="/leaderboard" component={Link} icon={<AlignVerticalBottomIcon />} />
+            <Tab label="Statistics" value="stats" to="/stats" component={Link} icon={<FunctionsIcon />}/>
         </Tabs>
     );
 }
@@ -72,7 +79,7 @@ export default function TabsRouter() {
             <Box sx={{ width: '100%' }}>
                 <MyTabs />
                 <Routes>
-                    <Route path="/" element={<Main/>} />
+                    <Route path="/login" element={<Main/>} />
                     <Route path="/current" element={<Current />}/>
                 </Routes>
             </Box>
