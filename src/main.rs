@@ -6,13 +6,13 @@ use std::{env, process::id};
 
 use actix_files as fs;
 use actix_web::{get, post, web, App, HttpRequest, HttpResponse, HttpServer};
-use chrono::{Local, Utc};
+use chrono::Local;
 use futures::{
-    stream::{StreamExt, TryStreamExt},
+    stream::{StreamExt},
     TryFutureExt,
 };
 use log::*;
-use mongodb::{bson::doc, options::ClientOptions, Client, Database};
+use mongodb::{bson::doc, options::ClientOptions, Client};
 use simple_logger::SimpleLogger;
 
 use crate::{add_student::AddStudentRequest, schema::student::Student};
@@ -163,10 +163,10 @@ async fn get_client() -> Result<Client, mongodb::error::Error> {
 
 #[actix_web::main]
 async fn main() -> Result<(), actix_web::Error> {
-    SimpleLogger::new()
-        .with_level(LevelFilter::Info)
-        .init()
-        .unwrap();
+    // SimpleLogger::new()
+    //     .with_level(LevelFilter::Info)
+    //     .init()
+    //     .unwrap();
     trace!("Started logger");
 
     let client = get_client().await.unwrap();
