@@ -6,7 +6,7 @@ use std::{env, process::id};
 
 use actix_files as fs;
 use actix_web::{App, HttpRequest, HttpResponse, HttpServer, get, post, web};
-use chrono::Utc;
+use chrono::{Local, Utc};
 use log::*;
 use mongodb::{bson::doc, options::ClientOptions, Client, Database};
 use simple_logger::SimpleLogger;
@@ -58,17 +58,17 @@ async fn login_request(form: web::Json<login::LoginRequest>, state: web::Data<Ap
             let mut time_spent = 0;
             if student.login_status.is_some() {
                 // We are currently at lab, therefore log out and add an event
-                let event = (student.login_status.unwrap(), Utc::now());
+                let event = (student.login_status.unwrap(), Local::now());
                 time_spent = (event.1 - event.0).num_seconds();
                 student.valid_time += time_spent;
-                info!("Logging {} out at {} with {} minutes at lab", student.name, Utc::now(), time_spent);
+                info!("Logging {} out at {} with {} minutes at lab", student.name, Local::now(), time_spent);
                 student.events.push(event);
                 student.login_status = None;
                 leaving = true;
             } else {
                 // We are just signing into lab, therefore just log in and do not add an event
-                student.login_status = Some(Utc::now());
-                info!("Logging {} in at {}", &student.name, Utc::now());
+                student.login_status = Some(Local::now());
+                info!("Logging {} in at {}", &student.name, Local::now());
             }
             let name = student.name.clone();
             collection.replace_one_with_session(doc! {"id": form.id}, student, None, &mut session).await.unwrap();
@@ -136,7 +136,7 @@ async fn main() -> Result<(), actix_web::Error> {
         .service(get_students)
         .service(echo)
         .service(fs::Files::new("/", "./static/build").index_file("index.html")))
-        .bind(env::var("URL").expect("URL not set") + &env::var("PORT").expect("PORT not set"))?
+        .bind("0.0.0.0:".to_owned() + &env::var("PORT").unwrap_or("8080".to_owned()))?
         .run()
         .await?;
 
