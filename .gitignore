@@ -19,9 +19,6 @@ static/.pnp
 # testing
 static/coverage
 
-# production
-static/build
-
 # misc
 .DS_Store
 .env.local

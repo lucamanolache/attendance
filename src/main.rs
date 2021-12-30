@@ -13,7 +13,7 @@ use futures::{
 };
 use log::*;
 use mongodb::{bson::doc, options::ClientOptions, Client};
-use simple_logger::SimpleLogger;
+extern crate pretty_env_logger;
 
 use crate::{add_student::AddStudentRequest, schema::student::Student};
 
@@ -163,10 +163,7 @@ async fn get_client() -> Result<Client, mongodb::error::Error> {
 
 #[actix_web::main]
 async fn main() -> Result<(), actix_web::Error> {
-    // SimpleLogger::new()
-    //     .with_level(LevelFilter::Info)
-    //     .init()
-    //     .unwrap();
+    pretty_env_logger::init();
     trace!("Started logger");
 
     let client = get_client().await.unwrap();
