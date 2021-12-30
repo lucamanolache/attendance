@@ -1,18 +1,21 @@
-mod schema;
 mod add_student;
 mod login;
+mod schema;
 
 use std::{env, process::id};
 
 use actix_files as fs;
-use actix_web::{App, HttpRequest, HttpResponse, HttpServer, get, post, web};
+use actix_web::{get, post, web, App, HttpRequest, HttpResponse, HttpServer};
 use chrono::{Local, Utc};
+use futures::{
+    stream::{StreamExt, TryStreamExt},
+    TryFutureExt,
+};
 use log::*;
 use mongodb::{bson::doc, options::ClientOptions, Client, Database};
 use simple_logger::SimpleLogger;
-use futures::{stream::{StreamExt, TryStreamExt}, TryFutureExt};
 
-use crate::{schema::student::Student, add_student::AddStudentRequest};
+use crate::{add_student::AddStudentRequest, schema::student::Student};
 
 const DATABASE: &str = "attendance";
 const COLLECTION: &str = "people";
@@ -30,27 +33,46 @@ async fn echo(data: String) -> HttpResponse {
 #[get("/api/get_here")]
 async fn get_students(state: web::Data<AppState>) -> HttpResponse {
     info!("Getting students at lab");
-    let collection = state.client.database(DATABASE).collection::<Student>(COLLECTION);
+    let collection = state
+        .client
+        .database(DATABASE)
+        .collection::<Student>(COLLECTION);
 
-    let students = collection.find(doc! {"login_status": {"$ne": Option::<String>::None}}, None).await.unwrap();
-    let students = students.map(|x| {
-        let x = x.unwrap();
-        AddStudentRequest {
-            id: x.id,
-            subteam: x.subteam,
-            name: x.name,
-        }
-    }).collect::<Vec<AddStudentRequest>>().await;
+    let students = collection
+        .find(doc! {"login_status": {"$ne": Option::<String>::None}}, None)
+        .await
+        .unwrap();
+    let students = students
+        .map(|x| {
+            let x = x.unwrap();
+            AddStudentRequest {
+                id: x.id,
+                subteam: x.subteam,
+                name: x.name,
+            }
+        })
+        .collect::<Vec<AddStudentRequest>>()
+        .await;
 
-    return HttpResponse::Ok().body(serde_json::to_string(&students).unwrap())
+    return HttpResponse::Ok().body(serde_json::to_string(&students).unwrap());
 }
 
 #[post("/api/login")]
-async fn login_request(form: web::Json<login::LoginRequest>, state: web::Data<AppState>) -> HttpResponse {
+async fn login_request(
+    form: web::Json<login::LoginRequest>,
+    state: web::Data<AppState>,
+) -> HttpResponse {
     let mut session = state.client.start_session(None).await.unwrap();
 
-    let collection = state.client.database(DATABASE).collection::<Student>(COLLECTION);
-    match collection.find_one_with_session(doc! {"id": form.id}, None, &mut session).await.unwrap() {
+    let collection = state
+        .client
+        .database(DATABASE)
+        .collection::<Student>(COLLECTION);
+    match collection
+        .find_one_with_session(doc! {"id": form.id}, None, &mut session)
+        .await
+        .unwrap()
+    {
         Some(mut student) => {
             // Student has been found
             info!("Found student {}", form.id);
@@ -61,7 +83,12 @@ async fn login_request(form: web::Json<login::LoginRequest>, state: web::Data<Ap
                 let event = (student.login_status.unwrap(), Local::now());
                 time_spent = (event.1 - event.0).num_seconds();
                 student.valid_time += time_spent;
-                info!("Logging {} out at {} with {} minutes at lab", student.name, Local::now(), time_spent);
+                info!(
+                    "Logging {} out at {} with {} minutes at lab",
+                    student.name,
+                    Local::now(),
+                    time_spent
+                );
                 student.events.push(event);
                 student.login_status = None;
                 leaving = true;
@@ -71,26 +98,37 @@ async fn login_request(form: web::Json<login::LoginRequest>, state: web::Data<Ap
                 info!("Logging {} in at {}", &student.name, Local::now());
             }
             let name = student.name.clone();
-            collection.replace_one_with_session(doc! {"id": form.id}, student, None, &mut session).await.unwrap();
+            collection
+                .replace_one_with_session(doc! {"id": form.id}, student, None, &mut session)
+                .await
+                .unwrap();
 
-            HttpResponse::Ok().body(serde_json::to_string(&login::LoginResponse {
-                leaving,
-                time_spent,
-                name
-            }).unwrap())
-        },
+            HttpResponse::Ok().body(
+                serde_json::to_string(&login::LoginResponse {
+                    leaving,
+                    time_spent,
+                    name,
+                })
+                .unwrap(),
+            )
+        }
         None => {
             // Student was not found in database
             warn!("Student {} not found", form.id);
             HttpResponse::NotFound().body("")
         }
     }
-
 }
 
 #[post("/api/add_students")]
-async fn add_students(form: web::Json<add_student::AddStudentRequest>, state: web::Data<AppState>) -> HttpResponse {
-    let collection = state.client.database(DATABASE).collection::<Student>(COLLECTION);
+async fn add_students(
+    form: web::Json<add_student::AddStudentRequest>,
+    state: web::Data<AppState>,
+) -> HttpResponse {
+    let collection = state
+        .client
+        .database(DATABASE)
+        .collection::<Student>(COLLECTION);
     let student = Student {
         id: form.id,
         name: form.clone().name,
@@ -104,7 +142,7 @@ async fn add_students(form: web::Json<add_student::AddStudentRequest>, state: we
         Ok(_) => {
             info!("Adding student {:?}", form);
             HttpResponse::Accepted().body("")
-        },
+        }
         Err(e) => {
             warn!("Adding student {} failed with {:?}", form.id, e);
             HttpResponse::Conflict().body("")
@@ -125,20 +163,28 @@ async fn get_client() -> Result<Client, mongodb::error::Error> {
 
 #[actix_web::main]
 async fn main() -> Result<(), actix_web::Error> {
-    SimpleLogger::new().with_level(LevelFilter::Info).init().unwrap();
+    SimpleLogger::new()
+        .with_level(LevelFilter::Info)
+        .init()
+        .unwrap();
     trace!("Started logger");
 
     let client = get_client().await.unwrap();
 
-    HttpServer::new(move || App::new().data(AppState { client: client.clone() })
-        .service(add_students)
-        .service(login_request)
-        .service(get_students)
-        .service(echo)
-        .service(fs::Files::new("/", "./static/build").index_file("index.html")))
-        .bind("0.0.0.0:".to_owned() + &env::var("PORT").unwrap_or("8080".to_owned()))?
-        .run()
-        .await?;
+    HttpServer::new(move || {
+        App::new()
+            .data(AppState {
+                client: client.clone(),
+            })
+            .service(add_students)
+            .service(login_request)
+            .service(get_students)
+            .service(echo)
+            .service(fs::Files::new("/", "./static/build").index_file("index.html"))
+    })
+    .bind("0.0.0.0:".to_owned() + &env::var("PORT").unwrap_or("8080".to_owned()))?
+    .run()
+    .await?;
 
     return Ok(());
 }
