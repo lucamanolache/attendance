@@ -16,6 +16,7 @@ use mongodb::{bson::doc, options::ClientOptions, Client};
 extern crate pretty_env_logger;
 
 use crate::{add_student::AddStudentRequest, schema::student::Student};
+use crate::add_student::StudentResponse;
 
 const DATABASE: &str = "attendance";
 const COLLECTION: &str = "people";
@@ -39,11 +40,19 @@ async fn get_leaderboard(state: web::Data<AppState>) -> HttpResponse {
         .collection::<Student>(COLLECTION);
 
     let students = collection.find(doc!{}, None).await.unwrap();
-    let mut students: Vec<Student> = students
-        .map(|s| s.unwrap())
+    let mut students: Vec<StudentResponse> = students
+        .map(|x| {
+            let x = x.unwrap();
+            StudentResponse {
+                id: x.id,
+                subteam: x.subteam,
+                name: x.name,
+                total_time: x.valid_time,
+            }
+        })
         .collect()
         .await;
-    students.sort_by(|a, b| b.valid_time.cmp(&a.valid_time));
+    students.sort_by(|a, b| b.total_time.cmp(&a.total_time));
 
     return HttpResponse::Ok().body(serde_json::to_string(&students).unwrap());
 }
@@ -162,6 +171,7 @@ async fn main() -> Result<(), actix_web::Error> {
                 client: client.clone(),
             })
             .service(login_request)
+            .service(get_leaderboard)
             .service(get_students)
             .service(echo)
             .service(fs::Files::new("/", "./static/build").index_file("index.html"))

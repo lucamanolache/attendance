@@ -4,7 +4,7 @@ import TextField from '@mui/material/TextField';
 import Box from '@mui/material/Box';
 import {Grid} from "@mui/material";
 
-function Main() {
+function Main(props) {
     const [text, setText] = useState('')
     const [helper, setHelper] = useState('')
     const [error, setError] = useState(false)
@@ -13,6 +13,7 @@ function Main() {
         let valid = /^\d+$/.test(t);
         valid &= t.length === 8
         valid |= t.length === 0
+        valid |= t === "OGMonkeLARA"
         setHelper('')
         if (!valid) {
             setError(true);
@@ -28,7 +29,13 @@ function Main() {
         event.preventDefault();
         if (event.key === 'Enter') {
             if (isValid(text)) {
-                add_student(text)
+                if (text == "OGMonkeLARA") {
+                    console.log("monke")
+                    props.setCoolKid(true);
+                    setText('')
+                } else {
+                    add_student(text)
+                }
             }
             setText('')
         }
