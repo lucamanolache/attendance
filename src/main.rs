@@ -113,7 +113,7 @@ async fn add_students(form: web::Json<add_student::AddStudentRequest>, state: we
 }
 
 async fn get_client() -> Result<Client, mongodb::error::Error> {
-    let password = env::var("MONGO_PASSWD").unwrap();
+    let password = env::var("MONGO_PASSWD").expect("MONGO_PASSWD not set");
     let client_options = ClientOptions::parse(format!(
         "mongodb+srv://luca:{}@cluster0.sgpww.mongodb.net/attendance?retryWrites=true&w=majority",
         password
@@ -136,7 +136,7 @@ async fn main() -> Result<(), actix_web::Error> {
         .service(get_students)
         .service(echo)
         .service(fs::Files::new("/", "./static/build").index_file("index.html")))
-        .bind("127.0.0.1:3030")?
+        .bind(env::var("PORT").expect("PORT not set"))?
         .run()
         .await?;
 
