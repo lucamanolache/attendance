@@ -1,1 +1,1 @@
-./target/release/attendance-system
+PORT=$PORT ./target/release/attendance-system
