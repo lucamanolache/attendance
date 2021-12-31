@@ -5,10 +5,11 @@ mod slack;
 
 use std::{env, process::id};
 use std::env::VarError;
-use ::slack::{Error, RtmClient};
 
 use actix_files as fs;
 use actix_web::{get, post, web, App, HttpRequest, HttpResponse, HttpServer};
+use actix_web::client::HttpError;
+use actix_web::web::Form;
 use chrono::Local;
 use futures::{
     stream::{StreamExt},
@@ -16,10 +17,12 @@ use futures::{
 };
 use log::*;
 use mongodb::{bson::doc, options::ClientOptions, Client};
+
 extern crate pretty_env_logger;
 
 use crate::{add_student::AddStudentRequest, schema::student::Student};
 use crate::add_student::StudentResponse;
+use crate::slack::SlackRequest;
 
 const DATABASE: &str = "attendance";
 const COLLECTION: &str = "people";
@@ -150,6 +153,32 @@ async fn login_request(
     }
 }
 
+#[post("/slack")]
+async fn slack_rtm(body: web::Form<SlackRequest>, state: web::Data<AppState>) -> HttpResponse {
+    info!("Slack is requesting information on {} ({})", body.0.user_name ,body.0.user_id);
+
+    let collection = state
+        .client
+        .database(DATABASE)
+        .collection::<Student>(COLLECTION);
+    match collection
+        .find_one(doc! {"slack_id": body.0.user_id}, None)
+        .await
+        .unwrap()
+    {
+        Some(mut student) => {
+            // Student has been found
+            info!("Found student information");
+            HttpResponse::Ok().body(format!("You have {:.2} hours", student.valid_time as f64 / 360.0), )
+        }
+        None => {
+            // Student was not found in database
+            warn!("Student not found");
+            HttpResponse::Ok().body("Uh oh, an issue has been spotted. Please message @lmanolache for assistance")
+        }
+    }
+}
+
 async fn get_client() -> Result<Client, mongodb::error::Error> {
     let password = env::var("MONGO_PASSWD").expect("MONGO_PASSWD not set");
     let client_options = ClientOptions::parse(format!(
@@ -167,18 +196,6 @@ async fn main() -> Result<(), actix_web::Error> {
     trace!("Started logger");
 
     let client = get_client().await.unwrap();
-    actix_rt::spawn(async {
-        match env::var("SLACK_API_TOKEN") {
-            Ok(key) => {
-                let client = RtmClient::login_and_run(&key, &mut slack::bot::Handler);
-                match client {
-                    Ok(_) => {}
-                    Err(_) => warn!("Slack client not working")
-                }
-            }
-            Err(_) => { warn!("No Slack API key") }
-        }
-    });
 
     HttpServer::new(move || {
         App::new()
@@ -189,6 +206,7 @@ async fn main() -> Result<(), actix_web::Error> {
             .service(get_leaderboard)
             .service(get_students)
             .service(echo)
+            .service(slack_rtm)
             .service(fs::Files::new("/", "./static/build").index_file("index.html"))
     })
     .bind("0.0.0.0:".to_owned() + &env::var("PORT").unwrap_or("8080".to_owned()))?
