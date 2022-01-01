@@ -32,7 +32,7 @@ function Current() {
                     setStudents(response)
                 }
             })
-    })
+    }, [])
 
     return (
         <React.Fragment>

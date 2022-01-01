@@ -2,27 +2,24 @@ mod add_student;
 mod login;
 mod schema;
 mod slack;
+mod stats;
 
-use std::{env, process::id};
-use std::env::VarError;
+use std::collections::HashMap;
+use std::env;
 
 use actix_files as fs;
-use actix_web::{get, post, web, App, HttpRequest, HttpResponse, HttpServer};
-use actix_web::client::HttpError;
-use actix_web::web::Form;
-use chrono::Local;
-use futures::{
-    stream::{StreamExt},
-    TryFutureExt,
-};
+use actix_web::{get, post, web, App, HttpResponse, HttpServer};
+use chrono::{Local, NaiveDate};
+use futures::stream::StreamExt;
 use log::*;
 use mongodb::{bson::doc, options::ClientOptions, Client};
 
 extern crate pretty_env_logger;
 
-use crate::{add_student::AddStudentRequest, schema::student::Student};
 use crate::add_student::StudentResponse;
 use crate::slack::SlackRequest;
+use crate::stats::{DataPoint, Graph, StatsResponse};
+use crate::{add_student::AddStudentRequest, schema::student::Student};
 
 const DATABASE: &str = "attendance";
 const COLLECTION: &str = "people";
@@ -45,7 +42,7 @@ async fn get_leaderboard(state: web::Data<AppState>) -> HttpResponse {
         .database(DATABASE)
         .collection::<Student>(COLLECTION);
 
-    let students = collection.find(doc!{}, None).await.unwrap();
+    let students = collection.find(doc! {}, None).await.unwrap();
     let mut students: Vec<StudentResponse> = students
         .map(|x| {
             let x = x.unwrap();
@@ -88,6 +85,56 @@ async fn get_students(state: web::Data<AppState>) -> HttpResponse {
         .await;
 
     return HttpResponse::Ok().body(serde_json::to_string(&students).unwrap());
+}
+
+#[get("/api/get_stats")]
+async fn get_stats(state: web::Data<AppState>) -> HttpResponse {
+    info!("Getting students at lab");
+    let collection = state
+        .client
+        .database(DATABASE)
+        .collection::<Student>(COLLECTION);
+
+    let students = collection.find(doc! {}, None).await.unwrap();
+    let students: Vec<Student> = students.map(|x| x.unwrap()).collect().await;
+
+    let mut subteams: HashMap<String, (HashMap<NaiveDate, f64>, u32)> = HashMap::new();
+    students.iter().for_each(|x| {
+        if !subteams.contains_key(&*x.subteam) {
+            subteams.insert(x.subteam.clone(), (HashMap::new(), 0));
+        }
+        let (subteam_map, count) = subteams.get_mut(&*x.subteam).unwrap();
+        *count += 1;
+
+        x.events.iter().for_each(|e| {
+            let time = e.1 - e.0;
+            match subteam_map.get_mut(&e.0.naive_local().date()) {
+                None => {
+                    subteam_map.insert(e.0.naive_local().date().clone(), time.num_minutes() as f64);
+                }
+                Some(_) => {
+                    *subteam_map
+                        .get_mut(&e.0.naive_local().date().clone())
+                        .unwrap() += time.num_minutes() as f64;
+                }
+            }
+        })
+    });
+
+    let mut response = StatsResponse::default();
+    subteams.iter().for_each(|x| {
+        let mut graph = Graph::default();
+        graph.label = x.0.clone();
+        x.1 .0.iter().for_each(|e| {
+            graph.data.push(DataPoint {
+                date: e.0.clone(),
+                value: e.1 / x.1 .1 as f64,
+            })
+        });
+        response.hours_time.push(graph);
+    });
+
+    return HttpResponse::Ok().body(serde_json::to_string(&response).unwrap());
 }
 
 #[post("/api/login")]
@@ -155,7 +202,10 @@ async fn login_request(
 
 #[post("/slack")]
 async fn slack_rtm(body: web::Form<SlackRequest>, state: web::Data<AppState>) -> HttpResponse {
-    info!("Slack is requesting information on {} ({})", body.0.user_name ,body.0.user_id);
+    info!(
+        "Slack is requesting information on {} ({})",
+        body.0.user_name, body.0.user_id
+    );
 
     let collection = state
         .client
@@ -166,15 +216,19 @@ async fn slack_rtm(body: web::Form<SlackRequest>, state: web::Data<AppState>) ->
         .await
         .unwrap()
     {
-        Some(mut student) => {
+        Some(student) => {
             // Student has been found
             info!("Found student information");
-            HttpResponse::Ok().body(format!("You have {:.2} hours", student.valid_time as f64 / 360.0), )
+            HttpResponse::Ok().body(format!(
+                "You have {:.2} hours",
+                student.valid_time as f64 / 360.0
+            ))
         }
         None => {
             // Student was not found in database
             warn!("Student not found");
-            HttpResponse::Ok().body("Uh oh, an issue has been spotted. Please message @lmanolache for assistance")
+            HttpResponse::Ok()
+                .body("Uh oh, an issue has been spotted. Please message @lmanolache for assistance")
         }
     }
 }
@@ -201,6 +255,7 @@ async fn main() -> Result<(), actix_web::Error> {
             .service(login_request)
             .service(get_leaderboard)
             .service(get_students)
+            .service(get_stats)
             .service(echo)
             .service(slack_rtm)
             .service(fs::Files::new("/", "./static/build").index_file("index.html"))

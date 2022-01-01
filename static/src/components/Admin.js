@@ -33,25 +33,21 @@ function Admin(props) {
         fetch("/api/get_all", request_options)
             .then(response => response.json())
             .then(data => {
-                fetch("/api/get_all", request_options)
-                    .then(response => response.json())
-                    .then(response => {
-                        console.log("Got students")
-                        var arraysMatch = function (arr1, arr2) {
-                            if (arr1.length !== arr2.length) return false;
+                console.log("Got students")
+                var arraysMatch = function (arr1, arr2) {
+                    if (arr1.length !== arr2.length) return false;
 
-                            for (var i = 0; i < arr1.length; i++) {
-                                if (arr1[i].id !== arr2[i].id) return false;
-                            }
+                    for (var i = 0; i < arr1.length; i++) {
+                        if (arr1[i].id !== arr2[i].id) return false;
+                    }
 
-                            return true;
-                        };
+                    return true;
+                };
 
-                        if (!arraysMatch(response, memberData)) {
-                            setMemberData(response)
-                            console.log(response)
-                        }
-                    })
+                if (!arraysMatch(data, memberData)) {
+                    setMemberData(data)
+                    console.log(data)
+                }
             })
     }
 
