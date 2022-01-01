@@ -29,7 +29,7 @@ function Main(props) {
         event.preventDefault();
         if (event.key === 'Enter') {
             if (isValid(text)) {
-                if (text == "OGMonkeLARA") {
+                if (text === "OGMonkeLARA") {
                     console.log("monke")
                     props.setCoolKid(true);
                     setText('')
