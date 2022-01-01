@@ -180,12 +180,8 @@ async fn slack_rtm(body: web::Form<SlackRequest>, state: web::Data<AppState>) ->
 }
 
 async fn get_client() -> Result<Client, mongodb::error::Error> {
-    let password = env::var("MONGO_PASSWD").expect("MONGO_PASSWD not set");
-    let client_options = ClientOptions::parse(format!(
-        "mongodb+srv://luca:{}@cluster0.sgpww.mongodb.net/attendance?retryWrites=true&w=majority",
-        password
-    ))
-    .await?;
+    let uri = env::var("MONGO_URI").expect("MONGO_URI not set");
+    let client_options = ClientOptions::parse(uri).await?;
     let client = Client::with_options(client_options)?;
     Ok(client)
 }

@@ -17,9 +17,6 @@ log = "0.4"
 pretty_env_logger = "0.4"
 futures = "0.3"
 chrono = { version = "0.4", features = ["serde"] }
-slack-morphism="0.22"
-slack-morphism-models="0.22"
-slack-morphism-hyper="0.22"
 
 [dependencies.mongodb]
 version = "2.0.0"
