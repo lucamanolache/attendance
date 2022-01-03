@@ -89,7 +89,7 @@ async fn get_students(state: web::Data<AppState>) -> HttpResponse {
 
 #[get("/api/get_stats")]
 async fn get_stats(state: web::Data<AppState>) -> HttpResponse {
-    info!("Getting students at lab");
+    info!("Getting stats");
     let collection = state
         .client
         .database(DATABASE)
@@ -124,13 +124,14 @@ async fn get_stats(state: web::Data<AppState>) -> HttpResponse {
     let mut response = StatsResponse::default();
     subteams.iter().for_each(|x| {
         let mut graph = Graph::default();
-        graph.label = x.0.clone();
+        graph.id = x.0.clone();
         x.1 .0.iter().for_each(|e| {
             graph.data.push(DataPoint {
-                date: e.0.clone(),
-                value: e.1 / x.1 .1 as f64,
+                x: e.0.clone(),
+                y: e.1 / x.1 .1 as f64,
             })
         });
+        graph.data.sort_by(|a, b| a.x.partial_cmp(&b.x).unwrap());
         response.hours_time.push(graph);
     });
 
