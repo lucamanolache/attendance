@@ -72,7 +72,7 @@ function MyTabs(props) {
                     <Tab icon={<Filter8Icon />} to="/OGMonkeLARA" component={Link} disabled={!props.coolKid} />
                     <Tab label="Login" value="login" to="/login" component={Link} icon={<HomeIcon />} />
                     <Tab label="At Lab" value="current" to="/current" component={Link} icon={<PersonIcon />}/>
-                    <Tab label="Statistics" value="stats" to="/stats" component={Link} icon={<FunctionsIcon />}/>
+                    <Tab label="Statistics" value="stats" to="/stats" component={Link} icon={<FunctionsIcon />} disabled={!props.coolKid}/>
                 </Toolbar>
             </Container>
         </AppBar>
