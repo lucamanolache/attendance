@@ -65,6 +65,7 @@ function Main(props) {
 
     return (
         <React.Fragment>
+            <div className="container">
             <Grid
                 component="TextField"
                 sx={{
@@ -87,6 +88,7 @@ function Main(props) {
                     helperText={helper}
                     onChange={s => isValid(s.target.value)}/>
             </Grid>
+            </div>
         </React.Fragment>
     );
 }

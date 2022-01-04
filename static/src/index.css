@@ -15,3 +15,25 @@ code {
 .navBar {
   background-color: #03572C !important;
 }
+
+.container {
+  height: 100vh;
+  background-image: url("https://avatars.githubusercontent.com/u/711156?s=280&v=4");
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: cover;
+  animation-name: spin;
+  animation-duration: 5000ms;
+  animation-iteration-count: infinite;
+  animation-timing-function: linear;
+  border-radius: 75%;
+} 
+
+@keyframes spin {
+  from {
+      transform:rotate(0deg);
+  }
+  to {
+      transform:rotate(360deg);
+  }
+}
