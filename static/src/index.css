@@ -27,7 +27,20 @@ code {
   animation-iteration-count: infinite;
   animation-timing-function: linear;
   border-radius: 75%;
-} 
+}
+
+.container:hover {
+  height: 100vh;
+  background-image: url("https://avatars.githubusercontent.com/u/711156?s=280&v=4");
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: cover;
+  animation-name: spinny;
+  animation-duration: 5000ms;
+  animation-iteration-count: infinite;
+  animation-timing-function: linear;
+  border-radius: 75%;
+}
 
 @keyframes spin {
   from {
@@ -41,22 +54,68 @@ code {
   0% {
     background-color: red; /* Tint color */
     background-blend-mode: multiply;
+    /* width: 50%; */
   }
   25% {
     background-color: lime; /* Tint color */
     background-blend-mode: multiply;
+    width: 100%;
+    position: absolute;
   }
   50% {
     background-color: aqua; /* Tint color */
     background-blend-mode: multiply;
+    /* width: 50%; */
   }
   75% {
     background-color: pink; /* Tint color */
     background-blend-mode: multiply;
+    width: 100%;
+    position: absolute;
   }
   100% {
     background-color: yellow; /* Tint color */
     background-blend-mode: multiply;
+    /* width: 50%; */
+  }
+  
+}
+
+@keyframes spinny {
+  from {
+      transform:rotate(0deg);
+  }
+  to {
+      transform:rotate(360deg);
+  }
+  0%,100% { opacity: 0; }
+  50% { opacity: 1; }
+  0% {
+    background-color: red; /* Tint color */
+    background-blend-mode: multiply;
+    width: 50%;
+  }
+  25% {
+    background-color: lime; /* Tint color */
+    background-blend-mode: multiply;
+    width: 100%;
+    position: absolute;
+  }
+  50% {
+    background-color: aqua; /* Tint color */
+    background-blend-mode: multiply;
+    width: 50%;
+  }
+  75% {
+    background-color: pink; /* Tint color */
+    background-blend-mode: multiply;
+    width: 100%;
+    position: absolute;
+  }
+  100% {
+    background-color: yellow; /* Tint color */
+    background-blend-mode: multiply;
+    width: 50%;
   }
   
 }
