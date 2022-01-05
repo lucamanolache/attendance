@@ -27,8 +27,6 @@ code {
   animation-iteration-count: infinite;
   animation-timing-function: linear;
   border-radius: 75%;
-  background-color: red; /* Tint color */
-  background-blend-mode: multiply;
 } 
 
 @keyframes spin {
@@ -38,4 +36,27 @@ code {
   to {
       transform:rotate(360deg);
   }
+  0%,100% { opacity: 0; }
+  50% { opacity: 1; }
+  0% {
+    background-color: red; /* Tint color */
+    background-blend-mode: multiply;
+  }
+  25% {
+    background-color: lime; /* Tint color */
+    background-blend-mode: multiply;
+  }
+  50% {
+    background-color: aqua; /* Tint color */
+    background-blend-mode: multiply;
+  }
+  75% {
+    background-color: pink; /* Tint color */
+    background-blend-mode: multiply;
+  }
+  100% {
+    background-color: yellow; /* Tint color */
+    background-blend-mode: multiply;
+  }
+  
 }

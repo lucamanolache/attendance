@@ -45,7 +45,6 @@ function Main(props) {
 
     function arraysEqual(a1,a2) {
         /* WARNING: arrays must not contain {objects} or behavior may be undefined */
-        console.log(a1)
         return JSON.stringify(a1)==JSON.stringify(a2);
     }
 
