@@ -5,6 +5,12 @@ body {
     sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  background-color: #ff0ade;
+  background-image: url(pics/background.png);
+  background-size: 1200px;
+  background-position: bottom 98%;
+  background-repeat: no-repeat;
+  
 }
 
 code {
@@ -13,7 +19,7 @@ code {
 }
 
 .navBar {
-  background-color: #03572C !important;
+  background-color: #ff0ade !important;
 }
 
 .container {
