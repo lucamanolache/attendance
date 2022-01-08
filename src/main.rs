@@ -23,6 +23,7 @@ use crate::{add_student::AddStudentRequest, schema::student::Student};
 
 const DATABASE: &str = "attendance";
 const COLLECTION: &str = "people";
+const TIME_LIMIT: i64 = 43200; // 12 hours
 
 struct AppState {
     client: Client,
@@ -164,13 +165,18 @@ async fn login_request(
                 let event = (student.login_status.unwrap(), Local::now());
                 time_spent = (event.1 - event.0).num_seconds();
                 student.valid_time += time_spent;
+                if time_spent >= TIME_LIMIT {
+                    time_spent = TIME_LIMIT;
+                    warn!("Student {} has passed the time limit", form.id);
+                } else {
+                    student.events.push(event);
+                }
                 info!(
                     "Logging {} out at {} with {} minutes at lab",
                     student.name,
                     Local::now(),
                     time_spent
                 );
-                student.events.push(event);
                 student.login_status = None;
                 leaving = true;
             } else {

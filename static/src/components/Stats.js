@@ -57,7 +57,7 @@ function Stats() {
                         tickSize: 5,
                         tickPadding: 5,
                         tickRotation: 0,
-                        legend: 'transportation',
+                        legend: 'Date',
                         legendOffset: 36,
                         legendPosition: 'middle'
                     }}
@@ -66,7 +66,7 @@ function Stats() {
                         tickSize: 5,
                         tickPadding: 5,
                         tickRotation: 0,
-                        legend: 'count',
+                        legend: 'Hours',
                         legendOffset: -40,
                         legendPosition: 'middle'
                     }}
