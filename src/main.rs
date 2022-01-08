@@ -228,7 +228,7 @@ async fn slack_rtm(body: web::Form<SlackRequest>, state: web::Data<AppState>) ->
             info!("Found student information");
             HttpResponse::Ok().body(format!(
                 "You have {:.2} hours",
-                student.valid_time as f64 / 360.0
+                student.valid_time as f64 / 3600.0
             ))
         }
         None => {
