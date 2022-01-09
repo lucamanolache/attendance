@@ -166,7 +166,7 @@ async fn login_request(
                 time_spent = (event.1 - event.0).num_seconds();
                 student.valid_time += time_spent;
                 if time_spent >= TIME_LIMIT {
-                    time_spent = TIME_LIMIT;
+                    time_spent = 0;
                     warn!("Student {} has passed the time limit", form.id);
                 } else {
                     student.events.push(event);
