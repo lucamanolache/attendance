@@ -7,7 +7,7 @@ use std::env;
 
 use actix_files as fs;
 use actix_web::{get, post, web, App, HttpResponse, HttpServer};
-use chrono::{DateTime, Local, NaiveDate};
+use chrono::{Local, NaiveDate};
 use futures::stream::StreamExt;
 use log::*;
 use mongodb::{bson::doc, options::ClientOptions, Client};
@@ -54,7 +54,7 @@ async fn get_leaderboard(state: web::Data<AppState>) -> HttpResponse {
         .await;
     students.sort_by(|a, b| b.total_time.cmp(&a.total_time));
 
-    return HttpResponse::Ok().body(serde_json::to_string(&students).unwrap());
+    HttpResponse::Ok().body(serde_json::to_string(&students).unwrap())
 }
 
 #[get("/api/get_here")]
@@ -81,7 +81,7 @@ async fn get_students(state: web::Data<AppState>) -> HttpResponse {
         .collect::<Vec<AddStudentRequest>>()
         .await;
 
-    return HttpResponse::Ok().body(serde_json::to_string(&students).unwrap());
+    HttpResponse::Ok().body(serde_json::to_string(&students).unwrap())
 }
 
 #[get("/api/get_stats")]
@@ -110,7 +110,7 @@ async fn get_stats(state: web::Data<AppState>) -> HttpResponse {
             };
             match subteam_map.get_mut(&e.0.naive_local().date()) {
                 None => {
-                    subteam_map.insert(e.0.naive_local().date().clone(), time.num_minutes() as f64);
+                    subteam_map.insert(e.0.naive_local().date(), time.num_minutes() as f64);
                 }
                 Some(_) => {
                     *subteam_map
@@ -127,7 +127,7 @@ async fn get_stats(state: web::Data<AppState>) -> HttpResponse {
         graph.id = x.0.clone();
         x.1 .0.iter().for_each(|e| {
             graph.data.push(DataPoint {
-                x: e.0.clone(),
+                x: *e.0,
                 y: e.1 / x.1 .1 as f64,
             })
         });
@@ -135,7 +135,7 @@ async fn get_stats(state: web::Data<AppState>) -> HttpResponse {
         response.hours_time.push(graph);
     });
 
-    return HttpResponse::Ok().body(serde_json::to_string(&response).unwrap());
+    HttpResponse::Ok().body(serde_json::to_string(&response).unwrap())
 }
 
 #[post("/api/login")]
@@ -240,13 +240,13 @@ async fn slack_rtm(body: web::Form<SlackRequest>, state: web::Data<AppState>) ->
 }
 
 #[get("/api/needs_corrections")]
-async fn get_corrections(state: web::Data<AppState>) -> HttpResponse {
+async fn get_corrections(_state: web::Data<AppState>) -> HttpResponse {
     HttpResponse::Ok().body("")
 }
 
 #[post("/api/correction")]
-async fn correction(form: web::Json<CorrectionRequest>,
-                    state: web::Data<AppState>) -> HttpResponse {
+async fn correction(_form: web::Json<CorrectionRequest>,
+                    _state: web::Data<AppState>) -> HttpResponse {
 
 
     HttpResponse::Ok().body("")
@@ -283,5 +283,5 @@ async fn main() -> Result<(), actix_web::Error> {
     .run()
     .await?;
 
-    return Ok(());
+    Ok(())
 }
