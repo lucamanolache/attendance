@@ -239,6 +239,11 @@ async fn slack_rtm(body: web::Form<SlackRequest>, state: web::Data<AppState>) ->
     }
 }
 
+#[get("/api/needs_corrections")]
+async fn get_corrections(state: web::Data<AppState>) -> HttpResponse {
+    HttpResponse::Ok().body("")
+}
+
 #[post("/api/correction")]
 async fn correction(form: web::Json<CorrectionRequest>,
                     state: web::Data<AppState>) -> HttpResponse {
