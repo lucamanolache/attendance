@@ -7,18 +7,15 @@ use std::env;
 
 use actix_files as fs;
 use actix_web::{get, post, web, App, HttpResponse, HttpServer};
-use chrono::{Local, NaiveDate};
+use chrono::{DateTime, Local, NaiveDate};
 use futures::stream::StreamExt;
 use log::*;
 use mongodb::{bson::doc, options::ClientOptions, Client};
 
 extern crate pretty_env_logger;
 
-use crate::add_student::StudentResponse;
-use crate::slack::SlackRequest;
-use crate::stats::{DataPoint, Graph, StatsResponse};
-use crate::{add_student::AddStudentRequest, schema::student::Student};
-use crate::forms::{AddStudentRequest, DataPoint, Graph, SlackRequest, StatsResponse, StudentResponse};
+use crate::forms::{AddStudentRequest, CorrectionRequest, DataPoint, Graph, LoginRequest, LoginResponse, SlackRequest, StatsResponse, StudentResponse};
+use crate::schema::student::Student;
 
 const DATABASE: &str = "attendance";
 const COLLECTION: &str = "people";
@@ -107,7 +104,10 @@ async fn get_stats(state: web::Data<AppState>) -> HttpResponse {
         *count += 1;
 
         x.events.iter().for_each(|e| {
-            let time = e.1 - e.0;
+            let time = match e.1 {
+                None => chrono::Duration::seconds(0),
+                Some(t) => t - e.0
+            };
             match subteam_map.get_mut(&e.0.naive_local().date()) {
                 None => {
                     subteam_map.insert(e.0.naive_local().date().clone(), time.num_minutes() as f64);
@@ -140,7 +140,7 @@ async fn get_stats(state: web::Data<AppState>) -> HttpResponse {
 
 #[post("/api/login")]
 async fn login_request(
-    form: web::Json<login::LoginRequest>,
+    form: web::Json<LoginRequest>,
     state: web::Data<AppState>,
 ) -> HttpResponse {
     let mut session = state.client.start_session(None).await.unwrap();
@@ -161,13 +161,13 @@ async fn login_request(
             let mut time_spent = 0;
             if student.login_status.is_some() {
                 // We are currently at lab, therefore log out and add an event
-                let event = (student.login_status.unwrap(), Local::now());
-                time_spent = (event.1 - event.0).num_seconds();
+                let event = (student.login_status.unwrap(), Some(Local::now()));
                 student.valid_time += time_spent;
                 if time_spent >= TIME_LIMIT {
-                    time_spent = 0;
+                    student.events.push((event.0, None));
                     warn!("Student {} has passed the time limit", form.id);
                 } else {
+                    time_spent = (event.1.unwrap() - event.0).num_seconds();
                     student.events.push(event);
                 }
                 info!(
@@ -190,7 +190,7 @@ async fn login_request(
                 .unwrap();
 
             HttpResponse::Ok().body(
-                serde_json::to_string(&login::LoginResponse {
+                serde_json::to_string(&LoginResponse {
                     leaving,
                     time_spent,
                     name,
@@ -240,8 +240,9 @@ async fn slack_rtm(body: web::Form<SlackRequest>, state: web::Data<AppState>) ->
 }
 
 #[post("/api/correction")]
-async fn correction(form: web::Json<login::LoginRequest>,
+async fn correction(form: web::Json<CorrectionRequest>,
                     state: web::Data<AppState>) -> HttpResponse {
+
 
     HttpResponse::Ok().body("")
 }
