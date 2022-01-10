@@ -1,8 +1,6 @@
-mod add_student;
-mod login;
 mod schema;
-mod slack;
 mod stats;
+mod forms;
 
 use std::collections::HashMap;
 use std::env;
@@ -20,6 +18,7 @@ use crate::add_student::StudentResponse;
 use crate::slack::SlackRequest;
 use crate::stats::{DataPoint, Graph, StatsResponse};
 use crate::{add_student::AddStudentRequest, schema::student::Student};
+use crate::forms::{AddStudentRequest, DataPoint, Graph, SlackRequest, StatsResponse, StudentResponse};
 
 const DATABASE: &str = "attendance";
 const COLLECTION: &str = "people";
@@ -238,6 +237,13 @@ async fn slack_rtm(body: web::Form<SlackRequest>, state: web::Data<AppState>) ->
                 .body("Uh oh, an issue has been spotted. Please message @lmanolache for assistance")
         }
     }
+}
+
+#[post("/api/correction")]
+async fn correction(form: web::Json<login::LoginRequest>,
+                    state: web::Data<AppState>) -> HttpResponse {
+
+    HttpResponse::Ok().body("")
 }
 
 async fn get_client() -> Result<Client, mongodb::error::Error> {
