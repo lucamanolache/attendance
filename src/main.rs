@@ -1,20 +1,23 @@
+mod forms;
 mod schema;
 mod stats;
-mod forms;
 
 use std::collections::HashMap;
 use std::env;
 
 use actix_files as fs;
 use actix_web::{get, post, web, App, HttpResponse, HttpServer};
-use chrono::{Local, NaiveDate};
+use chrono::{DateTime, Local, NaiveDate, NaiveDateTime};
 use futures::stream::StreamExt;
 use log::*;
 use mongodb::{bson::doc, options::ClientOptions, Client};
 
 extern crate pretty_env_logger;
 
-use crate::forms::{AddStudentRequest, CorrectionRequest, DataPoint, Graph, LoginRequest, LoginResponse, SlackRequest, StatsResponse, StudentResponse};
+use crate::forms::{
+    AddStudentRequest, AllCorrections, CorrectionRequest, DataPoint, Graph, LoginRequest,
+    LoginResponse, SlackRequest, StatsResponse, StudentResponse,
+};
 use crate::schema::student::Student;
 
 const DATABASE: &str = "attendance";
@@ -106,7 +109,7 @@ async fn get_stats(state: web::Data<AppState>) -> HttpResponse {
         x.events.iter().for_each(|e| {
             let time = match e.1 {
                 None => chrono::Duration::seconds(0),
-                Some(t) => t - e.0
+                Some(t) => t - e.0,
             };
             match subteam_map.get_mut(&e.0.naive_local().date()) {
                 None => {
@@ -139,10 +142,7 @@ async fn get_stats(state: web::Data<AppState>) -> HttpResponse {
 }
 
 #[post("/api/login")]
-async fn login_request(
-    form: web::Json<LoginRequest>,
-    state: web::Data<AppState>,
-) -> HttpResponse {
+async fn login_request(form: web::Json<LoginRequest>, state: web::Data<AppState>) -> HttpResponse {
     let mut session = state.client.start_session(None).await.unwrap();
 
     let collection = state
@@ -240,15 +240,48 @@ async fn slack_rtm(body: web::Form<SlackRequest>, state: web::Data<AppState>) ->
 }
 
 #[get("/api/needs_corrections")]
-async fn get_corrections(_state: web::Data<AppState>) -> HttpResponse {
-    HttpResponse::Ok().body("")
+async fn get_corrections(state: web::Data<AppState>) -> HttpResponse {
+    info!("Getting students who need corrections");
+    let collection = state
+        .client
+        .database(DATABASE)
+        .collection::<Student>(COLLECTION);
+
+    let students = collection.find(doc! {}, None).await.unwrap();
+    let students = students
+        .filter_map(|student| {
+            let student = student.unwrap();
+            let misses = student
+                .events
+                .iter()
+                .filter(|event| event.1.is_none())
+                .map(|event| event.0)
+                .collect::<Vec<DateTime<Local>>>();
+
+            if misses.is_empty() {
+                None
+            } else {
+                Some(misses.iter().map(|s| AllCorrections {
+                    id: student.id,
+                    name: student.name,
+                    login_time: *s,
+                }))
+            }
+        })
+        .collect()
+        .await
+        .iter()
+        .flatten()
+        .collect::<Vec<AllCorrections>>();
+
+    HttpResponse::Ok().body(serde_json::to_string(&students).unwrap())
 }
 
 #[post("/api/correction")]
-async fn correction(_form: web::Json<CorrectionRequest>,
-                    _state: web::Data<AppState>) -> HttpResponse {
-
-
+async fn correction(
+    _form: web::Json<CorrectionRequest>,
+    _state: web::Data<AppState>,
+) -> HttpResponse {
     HttpResponse::Ok().body("")
 }
 
@@ -277,6 +310,7 @@ async fn main() -> Result<(), actix_web::Error> {
             .service(get_stats)
             .service(echo)
             .service(slack_rtm)
+            .service(get_corrections)
             .service(fs::Files::new("/", "./static/build").index_file("index.html"))
     })
     .bind("0.0.0.0:".to_owned() + &env::var("PORT").unwrap_or("8080".to_owned()))?

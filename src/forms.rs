@@ -1,5 +1,5 @@
+use chrono::{DateTime, Local, NaiveDate};
 use serde::{Deserialize, Serialize};
-use chrono::NaiveDate;
 
 #[derive(Deserialize, Copy, Clone, Debug)]
 pub struct LoginRequest {
@@ -68,4 +68,11 @@ pub struct CorrectionRequest {
     pub name: String,
     pub login_time: NaiveDate,
     pub logout_time: NaiveDate,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct AllCorrections {
+    pub id: u32,
+    pub name: String,
+    pub login_time: DateTime<Local>,
 }
