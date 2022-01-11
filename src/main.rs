@@ -47,7 +47,7 @@ async fn get_leaderboard(state: web::Data<AppState>) -> HttpResponse {
                 id: x.id,
                 subteam: x.subteam,
                 name: x.name,
-                total_time: x.valid_time,
+                total_time: x.valid_time / 3600,
             }
         })
         .collect()
@@ -110,7 +110,7 @@ async fn get_stats(state: web::Data<AppState>) -> HttpResponse {
             };
             match subteam_map.get_mut(&e.0.naive_local().date()) {
                 None => {
-                    subteam_map.insert(e.0.naive_local().date(), time.num_minutes() as f64);
+                    subteam_map.insert(e.0.naive_local().date(), time.num_minutes() as f64 / 60.0);
                 }
                 Some(_) => {
                     *subteam_map
