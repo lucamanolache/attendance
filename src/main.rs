@@ -162,7 +162,6 @@ async fn login_request(
             if student.login_status.is_some() {
                 // We are currently at lab, therefore log out and add an event
                 let event = (student.login_status.unwrap(), Some(Local::now()));
-                student.valid_time += time_spent;
                 if time_spent >= TIME_LIMIT {
                     student.events.push((event.0, None));
                     warn!("Student {} has passed the time limit", form.id);
@@ -170,6 +169,7 @@ async fn login_request(
                     time_spent = (event.1.unwrap() - event.0).num_seconds();
                     student.events.push(event);
                 }
+                student.valid_time += time_spent;
                 info!(
                     "Logging {} out at {} with {} minutes at lab",
                     student.name,
