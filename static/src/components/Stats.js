@@ -66,7 +66,7 @@ function Stats() {
                         tickSize: 5,
                         tickPadding: 5,
                         tickRotation: 0,
-                        legend: 'Hours',
+                        legend: 'Minutes',
                         legendOffset: -40,
                         legendPosition: 'middle'
                     }}

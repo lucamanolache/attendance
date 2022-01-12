@@ -173,7 +173,7 @@ async fn login_request(form: web::Json<LoginRequest>, state: web::Data<AppState>
                 }
                 student.valid_time += time_spent;
                 info!(
-                    "Logging {} out at {} with {} minutes at lab",
+                    "Logging {} out at {} with {} seconds at lab",
                     student.name,
                     Local::now(),
                     time_spent

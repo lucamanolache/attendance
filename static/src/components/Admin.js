@@ -12,7 +12,7 @@ function Admin(props) {
         { field: 'id', headerName: 'ID', width: 100, },
         { field: 'name', headerName: 'Name', width: 350 },
         { field: 'subteam', headerName: 'Subteam', width: 150, },
-        { field: 'total_time', headerName: 'Minutes', width: 160 },
+        { field: 'total_time', headerName: 'Hours', width: 160 },
     ]
 
     props.setCoolKid(false)
