@@ -11,6 +11,7 @@ use chrono::{DateTime, Local, NaiveDate, NaiveDateTime};
 use futures::stream::StreamExt;
 use log::*;
 use mongodb::{bson::doc, options::ClientOptions, Client};
+use mongodb::error::Error;
 
 extern crate pretty_env_logger;
 
@@ -162,11 +163,12 @@ async fn login_request(form: web::Json<LoginRequest>, state: web::Data<AppState>
             if student.login_status.is_some() {
                 // We are currently at lab, therefore log out and add an event
                 let event = (student.login_status.unwrap(), Some(Local::now()));
+                time_spent = (event.1.unwrap() - event.0).num_seconds();
                 if time_spent >= TIME_LIMIT {
+                    time_spent = 0;
                     student.events.push((event.0, None));
                     warn!("Student {} has passed the time limit", form.id);
                 } else {
-                    time_spent = (event.1.unwrap() - event.0).num_seconds();
                     student.events.push(event);
                 }
                 student.valid_time += time_spent;
@@ -239,43 +241,45 @@ async fn slack_rtm(body: web::Form<SlackRequest>, state: web::Data<AppState>) ->
     }
 }
 
-#[get("/api/needs_corrections")]
-async fn get_corrections(state: web::Data<AppState>) -> HttpResponse {
-    info!("Getting students who need corrections");
-    let collection = state
-        .client
-        .database(DATABASE)
-        .collection::<Student>(COLLECTION);
-
-    let students = collection.find(doc! {}, None).await.unwrap();
-    let students = students
-        .filter_map(|student| {
-            let student = student.unwrap();
-            let misses = student
-                .events
-                .iter()
-                .filter(|event| event.1.is_none())
-                .map(|event| event.0)
-                .collect::<Vec<DateTime<Local>>>();
-
-            if misses.is_empty() {
-                None
-            } else {
-                Some(misses.iter().map(|s| AllCorrections {
-                    id: student.id,
-                    name: student.name,
-                    login_time: *s,
-                }))
-            }
-        })
-        .collect()
-        .await
-        .iter()
-        .flatten()
-        .collect::<Vec<AllCorrections>>();
-
-    HttpResponse::Ok().body(serde_json::to_string(&students).unwrap())
-}
+// #[get("/api/needs_corrections")]
+// async fn get_corrections(state: web::Data<AppState>) -> HttpResponse {
+//     info!("Getting students who need corrections");
+//     let collection = state
+//         .client
+//         .database(DATABASE)
+//         .collection::<Student>(COLLECTION);
+//
+//     let students = collection.find(doc! {}, None).await.unwrap();
+//     let students: Vec<AllCorrections> = students.collect::<Vec<Result<Student, mongodb::error::Error>>>().await.iter()
+//         .filter_map(|student| {
+//             match student {
+//                 Ok(s) => { Some(s) }
+//                 Err(_) => { None }
+//             }
+//         })
+//         .filter_map(|student| {
+//             let student = student.clone();
+//             let misses = student
+//                 .events
+//                 .iter()
+//                 .filter(|event| event.1.is_none())
+//                 .map(|event| event.0)
+//                 .collect::<Vec<DateTime<Local>>>();
+//
+//             if misses.is_empty() {
+//                 None
+//             } else {
+//                 Some(misses.iter().map(|s| AllCorrections {
+//                     id: student.id.clone(),
+//                     name: student.name.clone(),
+//                     login_time: s.clone(),
+//                 }))
+//             }
+//         })
+//         .flatten().collect();
+//
+//     HttpResponse::Ok().body(serde_json::to_string(&students).unwrap())
+// }
 
 #[post("/api/correction")]
 async fn correction(
@@ -310,7 +314,7 @@ async fn main() -> Result<(), actix_web::Error> {
             .service(get_stats)
             .service(echo)
             .service(slack_rtm)
-            .service(get_corrections)
+            // .service(get_corrections)
             .service(fs::Files::new("/", "./static/build").index_file("index.html"))
     })
     .bind("0.0.0.0:".to_owned() + &env::var("PORT").unwrap_or("8080".to_owned()))?
