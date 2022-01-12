@@ -31,22 +31,27 @@ struct AppState {
 
 #[post("/api/echo")]
 async fn echo(data: String) -> HttpResponse {
+    /// Debugging request. Returns exactly what was sent.
     info!("Echo {}", data);
     HttpResponse::Ok().body(data)
 }
 
 #[get("/api/get_all")]
 async fn get_leaderboard(state: web::Data<AppState>) -> HttpResponse {
+    /// Returns all students in the database ordered by time at lab.
     info!("Getting leaderboard");
+    // Get student collection
     let collection = state
         .client
         .database(DATABASE)
         .collection::<Student>(COLLECTION);
 
+    // Find all students
     let students = collection.find(doc! {}, None).await.unwrap();
     let mut students: Vec<StudentResponse> = students
         .map(|x| {
             let x = x.unwrap();
+            // Turn students into a StudentResponse
             StudentResponse {
                 id: x.id,
                 subteam: x.subteam,
@@ -56,26 +61,33 @@ async fn get_leaderboard(state: web::Data<AppState>) -> HttpResponse {
         })
         .collect()
         .await;
+    // Sort by time at lab
     students.sort_by(|a, b| b.total_time.cmp(&a.total_time));
 
+    // Return json array
     HttpResponse::Ok().body(serde_json::to_string(&students).unwrap())
 }
 
 #[get("/api/get_here")]
 async fn get_students(state: web::Data<AppState>) -> HttpResponse {
+    /// Returns all students in the database who are here today.
     info!("Getting students at lab");
+    // Collection of students
     let collection = state
         .client
         .database(DATABASE)
         .collection::<Student>(COLLECTION);
 
+    // Get all students who are at lab
     let students = collection
+        // Filters those who have login_status as non null
         .find(doc! {"login_status": {"$ne": Option::<String>::None}}, None)
         .await
         .unwrap();
     let students = students
         .map(|x| {
             let x = x.unwrap();
+            // Turn students into a AddStudentRequest (because this is the format that needs to be returned)
             AddStudentRequest {
                 id: x.id,
                 subteam: x.subteam,
@@ -85,22 +97,27 @@ async fn get_students(state: web::Data<AppState>) -> HttpResponse {
         .collect::<Vec<AddStudentRequest>>()
         .await;
 
+    // Return json array
     HttpResponse::Ok().body(serde_json::to_string(&students).unwrap())
 }
 
 #[get("/api/get_stats")]
 async fn get_stats(state: web::Data<AppState>) -> HttpResponse {
+    /// Returns all students statistics.
     info!("Getting stats");
     let collection = state
         .client
         .database(DATABASE)
         .collection::<Student>(COLLECTION);
 
+    // Get all students from the database
     let students = collection.find(doc! {}, None).await.unwrap();
     let students: Vec<Student> = students.map(|x| x.unwrap()).collect().await;
 
+    // Create a HashMap of subteam name to students
     let mut subteams: HashMap<String, (HashMap<NaiveDate, f64>, u32)> = HashMap::new();
     students.iter().for_each(|x| {
+        // Reformat the order of the data in a scuffed way
         if !subteams.contains_key(&*x.subteam) {
             subteams.insert(x.subteam.clone(), (HashMap::new(), 0));
         }
@@ -125,6 +142,7 @@ async fn get_stats(state: web::Data<AppState>) -> HttpResponse {
         })
     });
 
+    // More scuffed reformatting
     let mut response = StatsResponse::default();
     subteams.iter().for_each(|x| {
         let mut graph = Graph::default();
@@ -241,45 +259,45 @@ async fn slack_rtm(body: web::Form<SlackRequest>, state: web::Data<AppState>) ->
     }
 }
 
-// #[get("/api/needs_corrections")]
-// async fn get_corrections(state: web::Data<AppState>) -> HttpResponse {
-//     info!("Getting students who need corrections");
-//     let collection = state
-//         .client
-//         .database(DATABASE)
-//         .collection::<Student>(COLLECTION);
-//
-//     let students = collection.find(doc! {}, None).await.unwrap();
-//     let students: Vec<AllCorrections> = students.collect::<Vec<Result<Student, mongodb::error::Error>>>().await.iter()
-//         .filter_map(|student| {
-//             match student {
-//                 Ok(s) => { Some(s) }
-//                 Err(_) => { None }
-//             }
-//         })
-//         .filter_map(|student| {
-//             let student = student.clone();
-//             let misses = student
-//                 .events
-//                 .iter()
-//                 .filter(|event| event.1.is_none())
-//                 .map(|event| event.0)
-//                 .collect::<Vec<DateTime<Local>>>();
-//
-//             if misses.is_empty() {
-//                 None
-//             } else {
-//                 Some(misses.iter().map(|s| AllCorrections {
-//                     id: student.id.clone(),
-//                     name: student.name.clone(),
-//                     login_time: s.clone(),
-//                 }))
-//             }
-//         })
-//         .flatten().collect();
-//
-//     HttpResponse::Ok().body(serde_json::to_string(&students).unwrap())
-// }
+#[get("/api/needs_corrections")]
+async fn get_corrections(state: web::Data<AppState>) -> HttpResponse {
+    info!("Getting students who need corrections");
+    let collection = state
+        .client
+        .database(DATABASE)
+        .collection::<Student>(COLLECTION);
+
+    let students = collection.find(doc! {}, None).await.unwrap();
+    let students: Vec<AllCorrections> = students.collect::<Vec<Result<Student, mongodb::error::Error>>>().await.iter()
+        .filter_map(|student| {
+            match student {
+                Ok(s) => { Some(s) }
+                Err(_) => { None }
+            }
+        })
+        .filter_map(|student| {
+            let student = student.clone();
+            let misses = student
+                .events
+                .iter()
+                .filter(|event| event.1.is_none())
+                .map(|event| event.0)
+                .collect::<Vec<DateTime<Local>>>();
+
+            if misses.is_empty() {
+                None
+            } else {
+                Some(misses.iter().map(|s| AllCorrections {
+                    id: student.id,
+                    name: student.name.clone(),
+                    login_time: *s,
+                }))
+            }
+        })
+        .flatten().collect();
+
+    HttpResponse::Ok().body(serde_json::to_string(&students).unwrap())
+}
 
 #[post("/api/correction")]
 async fn correction(
