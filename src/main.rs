@@ -4,6 +4,7 @@ mod stats;
 
 use std::collections::HashMap;
 use std::env;
+use std::fmt::format;
 
 use actix_files as fs;
 use actix_web::{get, post, web, App, HttpResponse, HttpServer};
@@ -226,6 +227,30 @@ async fn login_request(form: web::Json<LoginRequest>, state: web::Data<AppState>
     }
 }
 
+#[post["/at_lab"]]
+async fn slack_at_lab(body: web::Form<SlackRequest>, state: web::Data<AppState>) -> HttpResponse {
+    info!("Slack is requesting information on who is at lab");
+
+    let collection = state
+        .client
+        .database(DATABASE)
+        .collection::<Student>(COLLECTION);
+
+    let students = collection
+        .find(doc! {"login_status": {"$ne": Option::<String>::None}}, None)
+        .await
+        .unwrap();
+    let students = students
+        .map(|x| {
+            let x = x.unwrap();
+            x.name
+        })
+        .collect::<Vec<String>>()
+        .await;
+
+    HttpResponse::Ok().body(format!("Here is who is at lab:\n{:?}", students))
+}
+
 #[post("/slack")]
 async fn slack_rtm(body: web::Form<SlackRequest>, state: web::Data<AppState>) -> HttpResponse {
     info!(
@@ -331,6 +356,7 @@ async fn main() -> Result<(), actix_web::Error> {
             .service(get_students)
             .service(get_stats)
             .service(echo)
+            .service(slack_at_lab)
             .service(slack_rtm)
             // .service(get_corrections)
             .service(fs::Files::new("/", "./static/build").index_file("index.html"))
