@@ -1,13 +1,13 @@
 use std::collections::HashMap;
-use std::env;
 
-use actix_web::{get, post, web, App, HttpResponse, HttpServer};
+
+use actix_web::{get, post, web, HttpResponse};
 use chrono::{DateTime, Local, NaiveDate};
 use futures::stream::StreamExt;
 use log::*;
 
 use crate::{AppState, COLLECTION, DATABASE, TIME_LIMIT};
-use mongodb::{bson::doc, options::ClientOptions, Client};
+use mongodb::{bson::doc};
 
 extern crate pretty_env_logger;
 

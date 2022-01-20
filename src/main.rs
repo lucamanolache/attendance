@@ -1,6 +1,6 @@
 use actix_files as fs;
 
-use actix_web::{get, post, web, App, HttpResponse, HttpServer};
+use actix_web::{App, HttpServer};
 use log::*;
 use std::env;
 
