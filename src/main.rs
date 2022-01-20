@@ -312,6 +312,7 @@ async fn correction(
     form: web::Json<CorrectionRequest>,
     state: web::Data<AppState>,
 ) -> HttpResponse {
+    info!("Requesting to correct {}", form.id);
     let collection = state
         .client
         .database(DATABASE)
@@ -321,18 +322,25 @@ async fn correction(
         .await
         .unwrap();
     match student {
-        None => HttpResponse::NotFound().body(""),
+        None => {
+            warn!("Student {} not found!", form.id);
+            HttpResponse::NotFound().body("")
+        },
         Some(mut student) => {
             let mut needed_time = 0;
             student.events.iter_mut().for_each(|mut event| {
                 if event.0 == form.login_time {
                     event.1 = Some(form.logout_time);
                     needed_time += (form.logout_time - form.login_time).num_seconds() as i64;
+                    info!("Corrected {} with {} new seconds", form.id, needed_time);
                 }
             });
+            if needed_time == 0 {
+                warn!("Student {} has no time to correct", form.id);
+            }
             student.valid_time += needed_time;
 
-            collection.replace_one(doc! {"id": form.id}, student, None);
+            collection.replace_one(doc! {"id": form.id}, student, None).await.unwrap();
             HttpResponse::Ok().body("")
         }
     }
@@ -364,6 +372,7 @@ async fn main() -> Result<(), actix_web::Error> {
             .service(echo)
             .service(slack_rtm)
             .service(get_corrections)
+            .service(correction)
             .service(fs::Files::new("/", "./static/build").index_file("index.html"))
     })
     .bind("0.0.0.0:".to_owned() + &env::var("PORT").unwrap_or("8080".to_owned()))?

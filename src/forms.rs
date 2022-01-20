@@ -65,7 +65,6 @@ pub struct StudentResponse {
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct CorrectionRequest {
     pub id: u32,
-    pub name: String,
     pub login_time: DateTime<Local>,
     pub logout_time: DateTime<Local>,
 }
