@@ -6,13 +6,13 @@ use std::collections::HashMap;
 use std::env;
 
 use actix_files as fs;
+
 use actix_web::{get, post, web, App, HttpResponse, HttpServer};
-use actix_web::guard::All;
-use chrono::{DateTime, Local, NaiveDate, NaiveDateTime};
+use chrono::{DateTime, Local, NaiveDate};
 use futures::stream::StreamExt;
 use log::*;
+
 use mongodb::{bson::doc, options::ClientOptions, Client};
-use mongodb::error::Error;
 
 extern crate pretty_env_logger;
 
@@ -269,12 +269,13 @@ async fn get_corrections(state: web::Data<AppState>) -> HttpResponse {
         .collection::<Student>(COLLECTION);
 
     let students = collection.find(doc! {}, None).await.unwrap();
-    let students: Vec<AllCorrections> = students.collect::<Vec<Result<Student, mongodb::error::Error>>>().await.iter()
-        .filter_map(|student| {
-            match student {
-                Ok(s) => { Some(s) }
-                Err(_) => { None }
-            }
+    let students: Vec<AllCorrections> = students
+        .collect::<Vec<Result<Student, mongodb::error::Error>>>()
+        .await
+        .iter()
+        .filter_map(|student| match student {
+            Ok(s) => Some(s),
+            Err(_) => None,
         })
         .filter_map(|student| {
             let student = student.clone();
@@ -288,24 +289,53 @@ async fn get_corrections(state: web::Data<AppState>) -> HttpResponse {
             if misses.is_empty() {
                 None
             } else {
-                Some(misses.iter().map(|s| AllCorrections {
-                    id: student.id,
-                    name: student.name.clone(),
-                    login_time: *s,
-                }).collect::<Vec<AllCorrections>>())
+                Some(
+                    misses
+                        .iter()
+                        .map(|s| AllCorrections {
+                            id: student.id,
+                            name: student.name.clone(),
+                            login_time: *s,
+                        })
+                        .collect::<Vec<AllCorrections>>(),
+                )
             }
         })
-        .flatten().collect();
+        .flatten()
+        .collect();
 
     HttpResponse::Ok().body(serde_json::to_string(&students).unwrap())
 }
 
 #[post("/api/correction")]
 async fn correction(
-    _form: web::Json<CorrectionRequest>,
-    _state: web::Data<AppState>,
+    form: web::Json<CorrectionRequest>,
+    state: web::Data<AppState>,
 ) -> HttpResponse {
-    HttpResponse::Ok().body("")
+    let collection = state
+        .client
+        .database(DATABASE)
+        .collection::<Student>(COLLECTION);
+    let student = collection
+        .find_one(doc! {"id": form.id}, None)
+        .await
+        .unwrap();
+    match student {
+        None => HttpResponse::NotFound().body(""),
+        Some(mut student) => {
+            let mut needed_time = 0;
+            student.events.iter_mut().for_each(|mut event| {
+                if event.0 == form.login_time {
+                    event.1 = Some(form.logout_time);
+                    needed_time += (form.logout_time - form.login_time).num_seconds() as i64;
+                }
+            });
+            student.valid_time += needed_time;
+
+            collection.replace_one(doc! {"id": form.id}, student, None);
+            HttpResponse::Ok().body("")
+        }
+    }
 }
 
 async fn get_client() -> Result<Client, mongodb::error::Error> {
@@ -333,7 +363,7 @@ async fn main() -> Result<(), actix_web::Error> {
             .service(get_stats)
             .service(echo)
             .service(slack_rtm)
-            // .service(get_corrections)
+            .service(get_corrections)
             .service(fs::Files::new("/", "./static/build").index_file("index.html"))
     })
     .bind("0.0.0.0:".to_owned() + &env::var("PORT").unwrap_or("8080".to_owned()))?
