@@ -1,6 +1,3 @@
-mod forms;
-mod schema;
-mod stats;
 
 use std::collections::HashMap;
 use std::env;
@@ -13,6 +10,7 @@ use futures::stream::StreamExt;
 use log::*;
 
 use mongodb::{bson::doc, options::ClientOptions, Client};
+use attendance_system::AppState;
 
 extern crate pretty_env_logger;
 
@@ -25,10 +23,6 @@ use crate::schema::student::Student;
 const DATABASE: &str = "attendance";
 const COLLECTION: &str = "people";
 const TIME_LIMIT: i64 = 43200; // 12 hours
-
-struct AppState {
-    client: Client,
-}
 
 #[post("/api/echo")]
 async fn echo(data: String) -> HttpResponse {
@@ -346,25 +340,15 @@ async fn correction(
     }
 }
 
-async fn get_client() -> Result<Client, mongodb::error::Error> {
-    let uri = env::var("MONGO_URI").expect("MONGO_URI not set");
-    let client_options = ClientOptions::parse(uri).await?;
-    let client = Client::with_options(client_options)?;
-    Ok(client)
-}
 
 #[actix_web::main]
 async fn main() -> Result<(), actix_web::Error> {
     pretty_env_logger::init();
     trace!("Started logger");
 
-    let client = get_client().await.unwrap();
-
     HttpServer::new(move || {
         App::new()
-            .data(AppState {
-                client: client.clone(),
-            })
+            .data(AppState::new())
             .service(login_request)
             .service(get_leaderboard)
             .service(get_students)
