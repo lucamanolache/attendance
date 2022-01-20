@@ -25,6 +25,7 @@ import Filter8Icon from '@mui/icons-material/Filter8';
 import Admin from "./components/Admin";
 import {useState} from "react";
 import Stats from "./components/Stats";
+import Correction from "./components/Correction";
 
 function Router(props) {
     const { children } = props;
@@ -62,7 +63,7 @@ function MyTabs(props) {
     // This means that if you have nested routes like:
     // users, users/new, users/edit.
     // Then the order should be ['users/add', 'users/edit', 'users'].
-    const routeMatch = useRouteMatch(['login', 'current', 'leaderboard', 'stats']);
+    const routeMatch = useRouteMatch(['login', 'current', 'leaderboard', 'stats', 'correction']);
     const currentTab = routeMatch?.pattern?.path;
 
     return (
@@ -73,6 +74,7 @@ function MyTabs(props) {
                     <Tab label="Login" value="login" to="/login" component={Link} icon={<HomeIcon />} />
                     <Tab label="At Lab" value="current" to="/current" component={Link} icon={<PersonIcon />}/>
                     <Tab label="Statistics" value="stats" to="/stats" component={Link} icon={<FunctionsIcon />} disabled={!props.coolKid}/>
+                    <Tab label="Corrections" value="correction" to="/correction" component={Link} icon={<FunctionsIcon />} />
                 </Toolbar>
             </Container>
         </AppBar>
@@ -91,6 +93,7 @@ export default function TabsRouter() {
                     <Route path="/login" element={<Main setCoolKid={setCoolKid}/>} />
                     <Route path="/current" element={<Current />}/>
                     <Route path="/stats" element={<Stats />} />
+                    <Route path="/correction" element={<Correction />} />
                 </Routes>
             </Box>
         </Router>
