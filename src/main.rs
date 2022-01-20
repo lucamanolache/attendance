@@ -7,6 +7,7 @@ use std::env;
 
 use actix_files as fs;
 use actix_web::{get, post, web, App, HttpResponse, HttpServer};
+use actix_web::guard::All;
 use chrono::{DateTime, Local, NaiveDate, NaiveDateTime};
 use futures::stream::StreamExt;
 use log::*;
@@ -291,7 +292,7 @@ async fn get_corrections(state: web::Data<AppState>) -> HttpResponse {
                     id: student.id,
                     name: student.name.clone(),
                     login_time: *s,
-                }))
+                }).collect::<Vec<AllCorrections>>())
             }
         })
         .flatten().collect();
