@@ -1,21 +1,22 @@
 use std::collections::HashMap;
 
-
+use actix_session::Session;
 use actix_web::{get, post, web, HttpResponse};
+use actix_web::web::get;
 use chrono::{DateTime, Local, NaiveDate};
 use futures::stream::StreamExt;
 use log::*;
 
-use crate::{AppState, COLLECTION, DATABASE, TIME_LIMIT};
-use mongodb::{bson::doc};
+use crate::{AppState, ACCOUNTS, COLLECTION, DATABASE, TIME_LIMIT};
+use mongodb::bson::doc;
 
 extern crate pretty_env_logger;
 
 use crate::forms::{
     AddStudentRequest, AllCorrections, CorrectionRequest, DataPoint, Graph, LoginRequest,
-    LoginResponse, SlackRequest, StatsResponse, StudentResponse,
+    LoginResponse, SignIn, SlackRequest, StatsResponse, StudentResponse,
 };
-use crate::schema::student::Student;
+use crate::schema::{Account, Student};
 
 #[post("/api/echo")]
 pub async fn echo(data: String) -> HttpResponse {
@@ -25,9 +26,18 @@ pub async fn echo(data: String) -> HttpResponse {
 }
 
 #[get("/api/get_all")]
-pub async fn get_leaderboard(state: web::Data<AppState>) -> HttpResponse {
+pub async fn get_leaderboard(state: web::Data<AppState>, session: Session) -> HttpResponse {
     /// Returns all students in the database ordered by time at lab.
     info!("Getting leaderboard");
+
+    if session.get::<bool>("admin").unwrap().is_none() {
+        warn!("Unauthorized request!");
+        return HttpResponse::Unauthorized().body("");
+    } else if !session.get::<bool>("admin").unwrap().unwrap() {
+        warn!("Unauthorized request!");
+        return HttpResponse::Unauthorized().body("");
+    }
+
     // Get student collection
     let collection = state
         .client
@@ -90,9 +100,18 @@ pub async fn get_students(state: web::Data<AppState>) -> HttpResponse {
 }
 
 #[get("/api/get_stats")]
-pub async fn get_stats(state: web::Data<AppState>) -> HttpResponse {
+pub async fn get_stats(state: web::Data<AppState>, session: Session) -> HttpResponse {
     /// Returns all students statistics.
     info!("Getting stats");
+
+    if session.get::<bool>("admin").unwrap().is_none() {
+        warn!("Unauthorized request");
+        return HttpResponse::Unauthorized().body("");
+    } else if !session.get::<bool>("admin").unwrap().unwrap() {
+        warn!("Unauthorized request");
+        return HttpResponse::Unauthorized().body("");
+    }
+
     let collection = state
         .client
         .database(DATABASE)
@@ -152,8 +171,14 @@ pub async fn get_stats(state: web::Data<AppState>) -> HttpResponse {
 pub async fn login_request(
     form: web::Json<LoginRequest>,
     state: web::Data<AppState>,
+    login_session: Session,
 ) -> HttpResponse {
     let mut session = state.client.start_session(None).await.unwrap();
+
+    if login_session.get::<bool>("admin").unwrap().is_none() {
+        warn!("Unauthorized request");
+        return HttpResponse::Unauthorized().body("");
+    }
 
     let collection = state
         .client
@@ -251,8 +276,17 @@ pub async fn slack_rtm(body: web::Form<SlackRequest>, state: web::Data<AppState>
 }
 
 #[get("/api/needs_corrections")]
-pub async fn get_corrections(state: web::Data<AppState>) -> HttpResponse {
+pub async fn get_corrections(state: web::Data<AppState>, session: Session) -> HttpResponse {
     info!("Getting students who need corrections");
+
+    if session.get::<bool>("admin").unwrap().is_none() {
+        warn!("Unauthorized request!");
+        return HttpResponse::Unauthorized().body("");
+    } else if !session.get::<bool>("admin").unwrap().unwrap() {
+        warn!("Unauthorized request!");
+        return HttpResponse::Unauthorized().body("");
+    }
+
     let collection = state
         .client
         .database(DATABASE)
@@ -300,9 +334,19 @@ pub async fn get_corrections(state: web::Data<AppState>) -> HttpResponse {
 #[post("/api/correction")]
 pub async fn correction(
     form: web::Json<CorrectionRequest>,
+    session: Session,
     state: web::Data<AppState>,
 ) -> HttpResponse {
     info!("Requesting to correct {}", form.id);
+
+    if session.get::<bool>("admin").unwrap().is_none() {
+        warn!("Unauthorized request!");
+        return HttpResponse::Unauthorized().body("");
+    } else if !session.get::<bool>("admin").unwrap().unwrap() {
+        warn!("Unauthorized request!");
+        return HttpResponse::Unauthorized().body("");
+    }
+
     let collection = state
         .client
         .database(DATABASE)
@@ -335,6 +379,31 @@ pub async fn correction(
                 .await
                 .unwrap();
             HttpResponse::Ok().body("")
+        }
+    }
+}
+
+#[post("/api/get_cookie")]
+async fn get_cookie(
+    form: web::Json<SignIn>,
+    session: Session,
+    state: web::Data<AppState>,
+) -> HttpResponse {
+    info!("Requesting to sign in");
+    let collection = state
+        .client
+        .database(DATABASE)
+        .collection::<Account>(ACCOUNTS);
+
+    match collection
+        .find_one(doc! { "password": form.password.clone() }, None)
+        .await
+        .unwrap()
+    {
+        None => HttpResponse::NotAcceptable().body("password not found"),
+        Some(a) => {
+            session.set("admin", a.admin);
+            HttpResponse::Ok().body(format!("{}", a.admin))
         }
     }
 }

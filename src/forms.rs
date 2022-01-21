@@ -75,3 +75,8 @@ pub struct AllCorrections {
     pub name: String,
     pub login_time: DateTime<Local>,
 }
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct SignIn {
+    pub password: String,
+}

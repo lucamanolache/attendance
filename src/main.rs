@@ -14,9 +14,11 @@ async fn main() -> Result<(), actix_web::Error> {
     pretty_env_logger::init();
     trace!("Started logger");
 
+    let data = AppState::new().await;
+
     HttpServer::new(move || {
         App::new()
-            .data(AppState::new())
+            .data(data.clone())
             .service(login_request)
             .service(get_leaderboard)
             .service(get_students)

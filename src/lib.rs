@@ -7,10 +7,13 @@ mod schema;
 mod stats;
 
 pub mod handlers;
+
 pub const DATABASE: &str = "attendance";
 pub const COLLECTION: &str = "people";
+pub const ACCOUNTS: &str = "accounts";
 pub const TIME_LIMIT: i64 = 43200; // 12 hours
 
+#[derive(Clone)]
 pub struct AppState {
     pub client: Client,
 }

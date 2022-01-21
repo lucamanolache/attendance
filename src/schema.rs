@@ -11,3 +11,9 @@ pub struct Student {
     pub subteam: String,
     pub slack_id: String,
 }
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct Account {
+    pub admin: bool,
+    pub password: String,
+}
