@@ -31,10 +31,10 @@ pub async fn get_leaderboard(state: web::Data<AppState>, session: Session) -> Ht
     info!("Getting leaderboard");
 
     if session.get::<bool>("admin").unwrap().is_none() {
-        warn!("Unauthorized request!");
+        warn!("Unauthorized request! Admin is none");
         return HttpResponse::Unauthorized().body("");
     } else if !session.get::<bool>("admin").unwrap().unwrap() {
-        warn!("Unauthorized request!");
+        warn!("Unauthorized request! Admin is false");
         return HttpResponse::Unauthorized().body("");
     }
 
@@ -384,7 +384,7 @@ pub async fn correction(
 }
 
 #[post("/api/get_cookie")]
-async fn get_cookie(
+pub async fn get_cookie(
     form: web::Json<SignIn>,
     session: Session,
     state: web::Data<AppState>,
@@ -400,9 +400,14 @@ async fn get_cookie(
         .await
         .unwrap()
     {
-        None => HttpResponse::NotAcceptable().body("password not found"),
+        None => {
+            warn!("Account not found!");
+            HttpResponse::NotAcceptable().body("password not found")
+        },
         Some(a) => {
+            info!("Logging in with admin: {}", a.admin);
             session.set("admin", a.admin);
+            session.renew();
             HttpResponse::Ok().body(format!("{}", a.admin))
         }
     }

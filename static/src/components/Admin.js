@@ -15,8 +15,6 @@ function Admin(props) {
         { field: 'total_time', headerName: 'Hours', width: 160 },
     ]
 
-    props.setCoolKid(false)
-
     useEffect(() => {
         getStudents();
     }, [])

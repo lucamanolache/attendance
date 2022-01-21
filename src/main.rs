@@ -3,6 +3,7 @@ use actix_files as fs;
 use actix_web::{App, HttpServer};
 use log::*;
 use std::env;
+use actix_session::CookieSession;
 
 use attendance_system::handlers::*;
 use attendance_system::AppState;
@@ -18,6 +19,7 @@ async fn main() -> Result<(), actix_web::Error> {
 
     HttpServer::new(move || {
         App::new()
+            .wrap(CookieSession::signed(&[0; 32]).secure(false))
             .data(data.clone())
             .service(login_request)
             .service(get_leaderboard)
@@ -27,6 +29,7 @@ async fn main() -> Result<(), actix_web::Error> {
             .service(slack_rtm)
             .service(get_corrections)
             .service(correction)
+            .service(get_cookie)
             .service(fs::Files::new("/", "./static/build").index_file("index.html"))
     })
     .bind("0.0.0.0:".to_owned() + &env::var("PORT").unwrap_or("8080".to_owned()))?

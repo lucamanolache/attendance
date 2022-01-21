@@ -26,6 +26,7 @@ import Admin from "./components/Admin";
 import {useState} from "react";
 import Stats from "./components/Stats";
 import Correction from "./components/Correction";
+import Login from "./components/Login";
 
 function Router(props) {
     const { children } = props;
@@ -74,7 +75,7 @@ function MyTabs(props) {
                     <Tab label="Login" value="login" to="/login" component={Link} icon={<HomeIcon />} />
                     <Tab label="At Lab" value="current" to="/current" component={Link} icon={<PersonIcon />}/>
                     <Tab label="Statistics" value="stats" to="/stats" component={Link} icon={<FunctionsIcon />} disabled={!props.coolKid}/>
-                    <Tab label="Corrections" value="correction" to="/correction" component={Link} icon={<FunctionsIcon />} />
+                    <Tab label="Corrections" value="correction" to="/correction" component={Link} icon={<FunctionsIcon />} disabled={!props.coolKid}/>
                 </Toolbar>
             </Container>
         </AppBar>
@@ -83,19 +84,25 @@ function MyTabs(props) {
 
 export default function TabsRouter() {
     const [coolKid, setCoolKid] = useState(false);
+    const [loggedIn, setLoggedIn] = useState(false);
 
     return (
-        <Router>
-            <Box sx={{ width: '100%' }}>
-                <MyTabs coolKid={coolKid} />
-                <Routes>
-                    <Route path="/OGMonkeLARA" element={<Admin setCoolKid={setCoolKid}/>}/>
-                    <Route path="/login" element={<Main setCoolKid={setCoolKid}/>} />
-                    <Route path="/current" element={<Current />}/>
-                    <Route path="/stats" element={<Stats />} />
-                    <Route path="/correction" element={<Correction />} />
-                </Routes>
-            </Box>
-        </Router>
-    );
+        <div>
+            {loggedIn ? (
+            <Router>
+                <Box sx={{ width: '100%' }}>
+                    <MyTabs coolKid={coolKid} />
+                    <Routes>
+                        <Route path="/OGMonkeLARA" element={<Admin setCoolKid={setCoolKid}/>}/>
+                        <Route path="/login" element={<Main setCoolKid={setCoolKid}/>} />
+                        <Route path="/current" element={<Current />}/>
+                        <Route path="/stats" element={<Stats />} />
+                        <Route path="/correction" element={<Correction />} />
+                    </Routes>
+                </Box>
+            </Router>) :(
+                <Login login={setLoggedIn} admin={setCoolKid}/>
+            )}
+        </div>
+);
 }

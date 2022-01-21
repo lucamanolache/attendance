@@ -69,8 +69,7 @@ function Main(props) {
         if (event.key === 'Enter') {
             if (isValid(text)) {
                 if (text === "OGMonkeLARA") {
-                    // console.log("monke")
-                    props.setCoolKid(true);
+                    alert("Are you really an OG Monke?!")
                     setText('')
                 } else {
                     add_student(text)
