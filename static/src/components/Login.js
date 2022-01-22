@@ -54,6 +54,7 @@ function Login(props) {
                 >
                     <TextField
                         id="login-box"
+                        type="password"
                         label="Password"
                         variant="standard"
                         value={text}
